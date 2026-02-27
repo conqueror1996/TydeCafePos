@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Menu, Search, Store, Monitor, LayoutGrid, Clock, Bell, User,
   ChevronDown, Info, CreditCard, Banknote, Printer, Eye, Plus,
-  Minus, X, Utensils, Smartphone, BarChart3, TrendingUp, PieChart, AlertTriangle, Truck, ShoppingBag, ChefHat, MessageSquare, CheckSquare
+  Minus, X, Utensils, Smartphone, BarChart3, TrendingUp, PieChart, AlertTriangle, Truck, ShoppingBag, ChefHat, MessageSquare, CheckSquare, Sunset
 } from 'lucide-react';
 import './index.css';
 
@@ -65,6 +65,9 @@ const TopHeader = ({ onViewChange }) => {
         <input type="text" placeholder="KOT No" />
       </div>
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '15px' }}>
+        <button onClick={() => onViewChange('dayclose')} style={{ cursor: 'pointer', border: 'none', background: 'transparent', textAlign: 'center', opacity: 0.7 }}>
+          <Sunset size={16} /><div style={{ fontSize: '9px' }}>Day Close</div>
+        </button>
         <button onClick={() => onViewChange('analytics')} style={{ cursor: 'pointer', border: 'none', background: 'transparent', textAlign: 'center', opacity: 0.7 }}>
           <BarChart3 size={16} /><div style={{ fontSize: '9px' }}>Reports</div>
         </button>
@@ -880,6 +883,141 @@ const AnalyticsDashboard = ({ orderHistory }) => {
   );
 };
 
+/* --- DAY CLOSE WIZARD --- */
+const DayCloseWizard = ({ orderHistory, onCompleteDayClose }) => {
+  const [cashCount, setCashCount] = useState('');
+  const [managerPin, setManagerPin] = useState('');
+  const [isCompleted, setIsCompleted] = useState(false);
+
+  const payments = { Cash: 0, Card: 0, UPI: 0 };
+  let totalDiscounts = 0;
+
+  orderHistory.forEach(order => {
+    payments[order.paymentMethod] = (payments[order.paymentMethod] || 0) + order.grandTotal;
+    totalDiscounts += order.discountAmt || 0;
+  });
+
+  const totalExpectedSales = payments.Cash + payments.Card + payments.UPI;
+  const cashDifference = parseFloat(cashCount || 0) - payments.Cash;
+
+  const handleClose = () => {
+    if (managerPin !== '9999') {
+      alert("Invalid Manager PIN. Day Close aborted.");
+      return;
+    }
+    if (cashCount === '') {
+      alert("Please enter the physical cash counted in the drawer.");
+      return;
+    }
+    setIsCompleted(true);
+  };
+
+  if (isCompleted) {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f9fafb', padding: '20px' }} className="animate-fade-in">
+        <div style={{ background: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px' }}>
+          <CheckSquare size={48} color="#10b981" style={{ margin: '0 auto 16px' }} />
+          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>Day Closed Successfully</h2>
+          <p style={{ color: '#6b7280', marginBottom: '24px', fontSize: '14px' }}>All tables have been cleared and reports are saved. The system is ready for the next shift.</p>
+          <button
+            onClick={onCompleteDayClose}
+            style={{ width: '100%', padding: '12px', background: '#94161c', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+          >
+            Start Fresh Shift
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '30px', background: '#f9fafb', overflowY: 'auto' }} className="animate-fade-in no-scrollbar">
+      <div style={{ background: 'white', padding: '32px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', width: '100%', maxWidth: '600px' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Sunset size={28} color="#94161c" /> End of Day Settlement (Z-Report)
+        </h2>
+        <p style={{ color: '#6b7280', marginBottom: '32px', fontSize: '14px' }}>Validate your cash drawer before wiping the system for the next day. This action cannot be undone.</p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
+          <div style={{ background: '#f3f4f6', padding: '16px', borderRadius: '8px' }}>
+            <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 'bold' }}>SYSTEM NET SALES</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>₹{totalExpectedSales.toFixed(2)}</div>
+          </div>
+          <div style={{ background: '#f3f4f6', padding: '16px', borderRadius: '8px' }}>
+            <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 'bold' }}>TOTAL DISCOUNTS GIVEN</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#94161c' }}>₹{totalDiscounts.toFixed(2)}</div>
+          </div>
+          <div style={{ background: '#f5f3ff', padding: '16px', borderRadius: '8px' }}>
+            <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 'bold' }}>UPI / DIGITAL</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#5b21b6' }}>₹{payments.UPI.toFixed(2)}</div>
+          </div>
+          <div style={{ background: '#eff6ff', padding: '16px', borderRadius: '8px' }}>
+            <div style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'bold' }}>CREDIT/DEBIT CARDS</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#1d4ed8' }}>₹{payments.Card.toFixed(2)}</div>
+          </div>
+        </div>
+
+        <div style={{ borderTop: '2px dashed #e5e7eb', margin: '32px 0' }}></div>
+
+        <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1f2937', marginBottom: '16px' }}>Cash Drawer Verification</h3>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', padding: '16px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px' }}>
+          <div>
+            <div style={{ fontSize: '12px', color: '#059669', fontWeight: 'bold' }}>SYSTEM EXPECTED CASH</div>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#065f46' }}>₹{payments.Cash.toFixed(2)}</div>
+          </div>
+          <Banknote size={32} color="#059669" opacity={0.3} />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Physical Cash Counted (₹)</label>
+            <input
+              type="number"
+              value={cashCount}
+              onChange={(e) => setCashCount(e.target.value)}
+              placeholder="Enter cash found in drawer..."
+              style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', outline: 'none' }}
+              autoComplete="off"
+            />
+          </div>
+
+          {cashCount !== '' && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: cashDifference === 0 ? '#ecfdf5' : cashDifference > 0 ? '#eff6ff' : '#fef2f2', border: `1px solid ${cashDifference === 0 ? '#a7f3d0' : cashDifference > 0 ? '#bfdbfe' : '#fecaca'}`, borderRadius: '6px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 'bold', color: cashDifference === 0 ? '#059669' : cashDifference > 0 ? '#2563eb' : '#dc2626' }}>
+                {cashDifference === 0 ? "Drawer is Perfectly Balanced" : cashDifference > 0 ? "Cash Overage (Surplus)" : "Cash Shortage (Missing)"}
+              </span>
+              <span style={{ fontSize: '14px', fontWeight: 'bold', color: cashDifference === 0 ? '#059669' : cashDifference > 0 ? '#2563eb' : '#dc2626' }}>
+                {cashDifference > 0 ? "+" : ""}
+                ₹{cashDifference.toFixed(2)}
+              </span>
+            </div>
+          )}
+
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Manager Authorization PIN</label>
+            <input
+              type="password"
+              value={managerPin}
+              onChange={(e) => setManagerPin(e.target.value)}
+              placeholder="Enter PIN (e.g. 9999)"
+              style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', outline: 'none' }}
+            />
+          </div>
+        </div>
+
+        <button
+          className="btn-pp btn-pp-primary"
+          onClick={handleClose}
+          style={{ width: '100%', padding: '14px', fontSize: '16px', background: '#94161c' }}
+        >
+          Confirm Day Close & Print Z-Report
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [view, setView] = useState('tables');
   const [selectedTable, setSelectedTable] = useState(null);
@@ -1003,6 +1141,17 @@ export default function App() {
         )}
         {view === 'analytics' && (
           <AnalyticsDashboard orderHistory={orderHistory} />
+        )}
+        {view === 'dayclose' && (
+          <DayCloseWizard
+            orderHistory={orderHistory}
+            onCompleteDayClose={() => {
+              setTables(INITIAL_TABLES);
+              setNonTableOrders([]);
+              setOrderHistory([]);
+              setView('tables');
+            }}
+          />
         )}
         {view === 'kds' && (
           <KitchenDisplay tables={tables} nonTableOrders={nonTableOrders} onMarkReady={markOrderReady} />
