@@ -1,0 +1,1066 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Menu, Search, Store, Monitor, LayoutGrid, Clock, Bell, User,
+  ChevronDown, Info, CreditCard, Banknote, Printer, Eye, Plus,
+  Minus, X, Utensils, Smartphone, BarChart3, TrendingUp, PieChart, AlertTriangle, Truck, ShoppingBag, ChefHat, MessageSquare, CheckSquare
+} from 'lucide-react';
+import './index.css';
+
+// --- INITIAL MOCK DATA ---
+const CATEGORIES = [
+  'Quick Snacks', 'Instant Noodles', 'Breads', 'Pizzas', 'Burgers', 'Wraps',
+  'Pastas', 'Momos', 'Hot Beverages', 'Cold Beverages', 'Moktails', 'Dessert'
+];
+
+const MENU_ITEMS = [
+  { id: 1, name: 'Cheesy Fries', price: 140, type: 'veg', cat: 'Quick Snacks', inStock: true, modifiers: ['Extra Cheese (+₹30)', 'Spicy'] },
+  { id: 2, name: 'Chicken Lollipop', price: 210, type: 'non-veg', cat: 'Quick Snacks', inStock: true },
+  { id: 3, name: 'Chicken Nuggets', price: 180, type: 'non-veg', cat: 'Quick Snacks', inStock: true },
+  { id: 4, name: 'Chicken Popcorn', price: 160, type: 'non-veg', cat: 'Quick Snacks', inStock: true },
+  { id: 5, name: 'Chicken Strips', price: 240, type: 'non-veg', cat: 'Quick Snacks', inStock: false }, // Out of stock example
+  { id: 6, name: 'Mozzarella Sticks', price: 190, type: 'veg', cat: 'Quick Snacks', inStock: true },
+  { id: 7, name: 'Peri Peri Fries', price: 120, type: 'veg', cat: 'Quick Snacks', inStock: true },
+  { id: 8, name: 'Salted Fries', price: 100, type: 'veg', cat: 'Quick Snacks', inStock: true },
+  { id: 9, name: 'Veg Fingers', price: 110, type: 'veg', cat: 'Quick Snacks', inStock: true },
+  // Adding more for variety
+  { id: 101, name: 'Margherita Pizza', price: 250, type: 'veg', cat: 'Pizzas', inStock: true, modifiers: ['Thin Crust', 'Cheese Burst (+₹50)'] },
+  { id: 102, name: 'Cold Coffee', price: 150, type: 'veg', cat: 'Cold Beverages', inStock: true }
+];
+
+const INITIAL_TABLES = [
+  { id: 1, name: 'Table 1', status: 'blank', type: 'A/C', order: [] },
+  { id: 2, name: 'Table 2', status: 'blank', type: 'A/C', order: [] },
+  { id: 3, name: 'Table 3', status: 'blank', type: 'A/C', order: [] },
+  { id: 4, name: 'Table 4', status: 'blank', type: 'A/C', order: [] },
+  { id: 5, name: 'Table 5', status: 'blank', type: 'A/C', order: [] },
+  { id: 8, name: 'Table 8', status: 'blank', type: 'A/C', order: [] },
+  { id: 9, name: 'Table 9', status: 'blank', type: 'A/C', order: [] },
+  { id: 12, name: 'Table 12', status: 'blank', type: 'A/C', order: [] },
+  { id: 14, name: 'Table 14', status: 'blank', type: 'A/C', order: [] },
+  { id: 101, name: 'Table 1', status: 'blank', type: 'Non A/C', order: [] },
+  { id: 102, name: 'Table 2', status: 'blank', type: 'Non A/C', order: [] },
+];
+
+const TAX_RATE = 0.05; // 5% GST (2.5% CGST + 2.5% SGST)
+
+// --- COMPONENTS ---
+
+const TopHeader = ({ onViewChange }) => {
+  return (
+    <div className="pos-header no-print">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '180px' }}>
+        <Menu size={20} color="#374151" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ background: '#94161c', color: 'white', padding: '4px 6px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>TYDE</div>
+          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1f2937' }}>CAFE</div>
+        </div>
+      </div>
+      <button className="btn-pp btn-pp-primary" onClick={() => onViewChange('ordering', null)}>New Order</button>
+      <div className="header-search">
+        <Search size={14} color="#6b7280" />
+        <input type="text" placeholder="Bill No" />
+      </div>
+      <div className="header-search">
+        <Search size={14} color="#6b7280" />
+        <input type="text" placeholder="KOT No" />
+      </div>
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '15px' }}>
+        <button onClick={() => onViewChange('analytics')} style={{ cursor: 'pointer', border: 'none', background: 'transparent', textAlign: 'center', opacity: 0.7 }}>
+          <BarChart3 size={16} /><div style={{ fontSize: '9px' }}>Reports</div>
+        </button>
+        <button onClick={() => onViewChange('kds')} style={{ cursor: 'pointer', border: 'none', background: 'transparent', textAlign: 'center', opacity: 0.7 }}>
+          <ChefHat size={16} /><div style={{ fontSize: '9px' }}>Kitchen</div>
+        </button>
+        <button onClick={() => onViewChange('nontables')} style={{ cursor: 'pointer', border: 'none', background: 'transparent', textAlign: 'center', opacity: 0.7 }}>
+          <ShoppingBag size={16} /><div style={{ fontSize: '9px' }}>Online</div>
+        </button>
+        <button onClick={() => onViewChange('tables')} style={{ cursor: 'pointer', border: 'none', background: 'transparent', textAlign: 'center', opacity: 0.7 }}>
+          <LayoutGrid size={16} /><div style={{ fontSize: '9px' }}>Tables</div>
+        </button>
+        <div style={{ borderLeft: '1px solid #e5e7eb', height: '30px', margin: '0 10px' }}></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '11px', color: '#94161c', fontWeight: 'bold' }}>Call for Support</div>
+            <div style={{ fontSize: '11px', fontWeight: 'bold' }}>+91 8652475772</div>
+          </div>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <User size={18} color="#94161c" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TableManagement = ({ tables, onSelectTable }) => {
+  const getTableTotal = (order) => order.reduce((acc, item) => acc + (item.price * item.qty), 0);
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }} className="animate-fade-in no-scrollbar">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#374151' }}>Table View</h2>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn-pp btn-pp-primary" style={{ padding: '6px 12px' }}>+ Table Reservation</button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', fontSize: '10px', color: '#6b7280', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', border: '1px solid #d1d5db', background: 'white', borderRadius: '2px' }}></div> Blank Table</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', background: '#bae6fd', borderRadius: '2px' }}></div> Running Table</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', background: '#bbf7d0', borderRadius: '2px' }}></div> Printed Table</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', background: '#fef08a', borderRadius: '2px' }}></div> Running KOT</div>
+      </div>
+
+      {['A/C', 'Non A/C'].map(section => (
+        <div key={section} style={{ marginBottom: '30px' }}>
+          <h3 className="table-section-header">{section}</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px' }}>
+            {tables.filter(t => t.type === section).map(table => {
+              const tableTotal = getTableTotal(table.order);
+              return (
+                <div
+                  key={table.id}
+                  className={`pp-table-card status-${table.status}`}
+                  onClick={() => onSelectTable(table)}
+                  style={{ height: '100px', padding: '10px' }}
+                >
+                  <div style={{ fontSize: '12px', color: '#4b5563', marginBottom: 'auto' }}>{table.name}</div>
+                  {(table.status !== 'blank') && (
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                      <Printer size={14} color="#6b7280" />
+                      {(table.status === 'kot' || table.status === 'printed') && <Eye size={14} color="#6b7280" />}
+                    </div>
+                  )}
+                  {tableTotal > 0 && (
+                    <div style={{ marginTop: 'auto', fontWeight: 'bold', fontSize: '13px' }}>₹{tableTotal}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/* --- KITCHEN DISPLAY SYSTEM --- */
+const KitchenDisplay = ({ tables, nonTableOrders, onMarkReady }) => {
+  const activeOrders = [...tables, ...nonTableOrders].filter(o => o.order && o.order.length > 0 && o.status !== 'blank' && o.status !== 'printed');
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#111827', color: 'white' }} className="animate-fade-in no-scrollbar">
+      <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <ChefHat size={24} color="#fca5a5" /> Kitchen Display System (KDS)
+      </h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+        {activeOrders.length === 0 && <div style={{ color: '#6b7280', fontStyle: 'italic', gridColumn: '1 / -1' }}>No active orders in queue.</div>}
+        {activeOrders.map(order => (
+          <div key={order.id} style={{ background: '#1f2937', borderRadius: '8px', border: '1px solid #374151', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ background: order.status === 'kot' ? '#b91c1c' : '#4f46e5', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{order.name}</div>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '4px' }}>
+                {order.status === 'kot' ? 'NEW KOT' : 'RUNNING'}
+              </div>
+            </div>
+            <div style={{ padding: '16px', flex: 1 }}>
+              {order.order.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #374151', paddingBottom: '8px', marginBottom: '8px' }}>
+                  <div>
+                    <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{item.qty}x {item.name}</div>
+                    {item.note && <div style={{ fontSize: '12px', color: '#fca5a5', fontStyle: 'italic', marginTop: '2px' }}>* NOTE: {item.note}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => onMarkReady(order)}
+              style={{ background: '#059669', color: 'white', border: 'none', padding: '16px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '8px', transition: 'background 0.2s' }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#047857'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#059669'}
+            >
+              <CheckSquare size={20} /> Mark Order Ready
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder }) => {
+  const getOrderTotal = (orderArr) => orderArr.reduce((acc, item) => acc + (item.price * item.qty), 0);
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }} className="animate-fade-in no-scrollbar">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#374151' }}>Takeaway & Delivery</h2>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn-pp btn-pp-outline" onClick={() => onCreateOrder('Delivery')} style={{ display: 'flex', alignItems: 'center', background: 'white' }}><Truck size={14} style={{ marginRight: '6px' }} />+ New Delivery</button>
+          <button className="btn-pp btn-pp-outline" onClick={() => onCreateOrder('Takeaway')} style={{ display: 'flex', alignItems: 'center', background: 'white' }}><ShoppingBag size={14} style={{ marginRight: '6px' }} />+ New Takeaway</button>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+        {orders.length === 0 && <div style={{ color: '#9ca3af', fontStyle: 'italic', gridColumn: '1 / -1' }}>No active Takeaway or Delivery orders.</div>}
+        {orders.map(order => {
+          const tableTotal = getOrderTotal(order.order);
+          return (
+            <div
+              key={order.id}
+              className={`pp-table-card status-${order.status}`}
+              onClick={() => onSelectOrder(order)}
+              style={{ alignItems: 'flex-start', padding: '16px', height: '110px' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '8px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#1f2937' }}>{order.name}</div>
+                <div style={{ fontSize: '10px', background: order.type === 'Delivery' ? '#fee2e2' : '#e0e7ff', color: order.type === 'Delivery' ? '#991b1b' : '#3730a3', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', border: `1px solid ${order.type === 'Delivery' ? '#fca5a5' : '#a5b4fc'}` }}>{order.type}</div>
+              </div>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: 'auto' }}>{order.phone || 'Pending Finalization'}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', marginTop: 'auto' }}>
+                <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: '600' }}>Items: {order.order.reduce((acc, i) => acc + i.qty, 0)}</div>
+                <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#94161c' }}>₹{tableTotal}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+/* --- DIRECT ESC/POS PRINTING HARDWARE ENGINE --- */
+// Connects bypassing Browser Dialog directly to USB/Serial EPSON/STAR format POS Thermal hardware
+const printPosToSerial = async (orderData) => {
+  try {
+    // 1. Request access to a USB Serial device (the thermal printer)
+    // REQUIRES: Chrome/Edge and Localhost/HTTPS 
+    if (!('serial' in navigator)) throw new Error('Web Serial API not supported.');
+    const port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 9600 });
+
+    // 2. Open hardware writer stream
+    const writer = port.writable.getWriter();
+    const textEncoder = new TextEncoder();
+
+    // Standard ESC/POS Macros
+    const init = new Uint8Array([0x1B, 0x40]);
+    const boldOn = new Uint8Array([0x1B, 0x45, 1]);
+    const boldOff = new Uint8Array([0x1B, 0x45, 0]);
+    const centerAlign = new Uint8Array([0x1B, 0x61, 1]);
+    const leftAlign = new Uint8Array([0x1B, 0x61, 0]);
+    const cutPaper = new Uint8Array([0x1D, 0x56, 0x41, 0x08]); // Full Cut hardware command
+
+    const w = async (bytes) => await writer.write(bytes);
+    const wT = async (text) => await writer.write(textEncoder.encode(text));
+
+    // 3. Render Receipt Payload inside Hardware Buffer
+    await w(init);
+    await w(centerAlign);
+    await w(boldOn);
+    await wT("TYDE CAFE\n");
+    await w(boldOff);
+    await wT("Tax Invoice\n");
+    await wT("--------------------------------\n");
+
+    await w(leftAlign);
+    await wT(`Table: ${orderData.tableName}\n`);
+    await wT(`Time:  ${new Date().toLocaleTimeString()}\n`);
+    await wT("--------------------------------\n");
+    await wT("Item                  Qty  Total\n");
+    await wT("--------------------------------\n");
+
+    for (const item of orderData.items) {
+      const nameStr = item.name.substring(0, 20).padEnd(21, ' ');
+      const qtyStr = item.qty.toString().padEnd(5, ' ');
+      const totalStr = (item.price * item.qty).toString();
+      await wT(`${nameStr}${qtyStr}${totalStr}\n`);
+    }
+
+    await wT("--------------------------------\n");
+    await w(leftAlign);
+    await wT("GST (5%):               Included\n");
+    await w(boldOn);
+    await wT(`GRAND TOTAL:           Rs.${orderData.grandTotal}\n`);
+    await w(boldOff);
+    await wT("--------------------------------\n");
+    await w(centerAlign);
+    await wT("   Thank You for Visiting \n\n\n\n\n");
+
+    // Trigger physical hardware blade to cut paper
+    await w(cutPaper);
+
+    // 4. Release hardware port cleanly
+    writer.releaseLock();
+    await port.close();
+
+    console.log("Direct ESC/POS Thermal Print Successful! Bypassed Generic Windows Spooler.");
+  } catch (error) {
+    console.warn("Direct Printing Hardware Handshake Failed. Emulating instead.", error);
+    alert(`Fast Direct Thermal Print Blocked: ${error.message}\nMake sure your thermal printer is USB connected. Falling back to the generic browser print queue for demonstration.`);
+    // Fallback if no printer selected or API blocked
+    window.print();
+  }
+};
+
+
+const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTable }) => {
+  const [cart, setCart] = useState(initialOrder || []);
+  const [activeCat, setActiveCat] = useState('Quick Snacks');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Modifiers & Discount State
+  const [showModifierModal, setShowModifierModal] = useState(null);
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [discountAmt, setDiscountAmt] = useState(0);
+  const [discountAuth, setDiscountAuth] = useState('');
+
+  const [discountInput, setDiscountInput] = useState('');
+  const [managerInput, setManagerInput] = useState('');
+
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [isPaid, setIsPaid] = useState(false);
+  const [splitWays, setSplitWays] = useState(1);
+
+  // Calculations
+  const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+  const taxableAmount = Math.max(0, subtotal - discountAmt);
+  const taxes = Math.round(taxableAmount * TAX_RATE);
+  const grandTotal = taxableAmount + taxes;
+
+  const handleApplyDiscount = () => {
+    if (managerInput === '9999') {
+      const amt = parseFloat(discountInput);
+      if (!isNaN(amt) && amt >= 0 && amt <= subtotal) {
+        setDiscountAmt(amt);
+        setDiscountAuth('Manager (9999)');
+        setShowDiscountModal(false);
+        setDiscountInput('');
+        setManagerInput('');
+      } else {
+        alert("Enter a valid discount amount less than the subtotal.");
+      }
+    } else {
+      alert("Invalid Manager PIN! Authentication Failed.");
+    }
+  };
+
+  const handleItemClick = (item) => {
+    if (!item.inStock) return;
+    if (item.modifiers && item.modifiers.length > 0) {
+      setShowModifierModal(item);
+    } else {
+      addToCart(item);
+    }
+  };
+
+  const addToCart = (item, selectedModifier = null) => {
+    setCart(prev => {
+      // If item has a specific price modifier like (+₹30), parse and add it
+      let finalPrice = item.price;
+      let nameNote = '';
+      if (selectedModifier) {
+        nameNote = ` - ${selectedModifier}`;
+        const priceMatch = selectedModifier.match(/\(\+₹(\d+)\)/);
+        if (priceMatch) {
+          finalPrice += parseInt(priceMatch[1], 10);
+        }
+      }
+
+      const cartItemId = `${item.id}${selectedModifier ? `-${selectedModifier}` : ''}`;
+      const existing = prev.find(i => i.cartItemId === cartItemId);
+
+      if (existing) {
+        return prev.map(i => i.cartItemId === cartItemId ? { ...i, qty: i.qty + 1 } : i);
+      }
+      return [...prev, { ...item, cartItemId, name: item.name + nameNote, price: finalPrice, qty: 1 }];
+    });
+    setShowModifierModal(null);
+  };
+
+  const updateQty = (cartItemId, delta) => {
+    setCart(prev => {
+      return prev.map(i => {
+        if (i.cartItemId === cartItemId) {
+          return { ...i, qty: Math.max(0, i.qty + delta) };
+        }
+        return i;
+      }).filter(i => i.qty > 0);
+    });
+  };
+
+  const handleAction = async (actionType) => {
+    const newStatus = actionType.includes('KOT') ? 'kot' : actionType.includes('Print') ? 'printed' : 'running';
+
+    if (isPaid && actionType.includes('Save')) {
+      // Settle and clear table with full analytics data
+      onSettleTable(table.id, { cart, subtotal, discountAmt, discountAuth, taxes, grandTotal, paymentMethod, timestamp: new Date().toISOString() });
+    } else {
+      // Just save order state
+      onSaveOrder(table.id, cart, newStatus);
+    }
+
+    if (actionType.includes('Print')) {
+      await printPosToSerial({
+        tableName: table?.name || 'Walk-In',
+        items: cart,
+        grandTotal: grandTotal,
+      });
+    }
+  };
+
+  const filteredItems = MENU_ITEMS.filter(item =>
+    (activeCat === 'All' || item.cat === activeCat) &&
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="animate-fade-in" style={{ flex: 1, display: 'flex', background: '#f3f4f6', position: 'relative' }}>
+
+      {/* Category Sidebar */}
+      <div className="menu-sidebar no-print no-scrollbar">
+        {CATEGORIES.map(cat => (
+          <button
+            key={cat}
+            className={`menu-cat-btn ${activeCat === cat ? 'active' : ''}`}
+            onClick={() => setActiveCat(cat)}
+            style={{ fontWeight: activeCat === cat ? '700' : '500' }}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Main Item Grid Area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '8px 12px', background: 'white', borderBottom: '1px solid #e5e7eb' }} className="no-print">
+          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', padding: '6px 12px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Search size={14} color="#6b7280" />
+            <input
+              type="text"
+              placeholder="Search item"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ background: 'transparent', border: 'none', outline: 'none', width: '100%', fontSize: '13px' }}
+            />
+          </div>
+        </div>
+
+        <div className="items-grid no-scrollbar" style={{ overflowY: 'auto', flex: 1, background: '#f3f4f6' }}>
+          {filteredItems.map(item => (
+            <div
+              key={item.id}
+              className={`item-card ${item.type}`}
+              onClick={() => handleItemClick(item)}
+              style={{
+                background: 'white',
+                opacity: item.inStock ? 1 : 0.5,
+                cursor: item.inStock ? 'pointer' : 'not-allowed'
+              }}
+            >
+              <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                {item.name} {item.modifiers && <span style={{ color: '#94161c', fontSize: '10px' }}>*</span>}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                <div style={{ fontSize: '12px', fontWeight: 'bold' }}>₹{item.price}</div>
+                {!item.inStock && <div style={{ fontSize: '10px', color: 'red', fontWeight: 'bold' }}>Out of Stock</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Billing Panel */}
+      <div className="billing-panel no-print">
+        <div className="billing-tabs">
+          <button className={`billing-tab ${table?.type !== 'Delivery' && table?.type !== 'Takeaway' ? 'active' : ''}`}>Dine in</button>
+          <button className={`billing-tab ${table?.type === 'Delivery' ? 'active' : ''}`}>Delivery</button>
+          <button className={`billing-tab ${table?.type === 'Takeaway' ? 'active' : ''}`}>Pick Up</button>
+        </div>
+
+        <div style={{ padding: '8px 12px', display: 'flex', borderBottom: '1px solid #e5e7eb', alignItems: 'center', gap: '12px' }}>
+          <div style={{ border: '1px solid #94161c', color: '#94161c', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
+            {table?.name || 'Walk-In'}
+          </div>
+          <button onClick={onBack} style={{ background: 'transparent', border: 'none', fontSize: '11px', color: '#6b7280', cursor: 'pointer', textDecoration: 'underline' }}>
+            {table && (String(table.id).startsWith('DEL-') || String(table.id).startsWith('TAK-')) ? 'Back to Online' : 'Back to Tables'}
+          </button>
+          <div style={{ marginLeft: 'auto', background: '#94161c', color: 'white', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+            {table?.type === 'Delivery' ? 'Delivery' : table?.type === 'Takeaway' ? 'Takeaway' : 'Dine In'}
+          </div>
+        </div>
+
+        <div style={{ padding: '8px 12px', display: 'flex', fontSize: '10px', fontWeight: 'bold', color: '#9ca3af', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ flex: 1 }}>ITEMS</div>
+          <div style={{ width: '80px', textAlign: 'center' }}>QTY.</div>
+          <div style={{ width: '80px', textAlign: 'right' }}>PRICE</div>
+        </div>
+
+        {/* Cart Items */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {cart.length === 0 ? (
+            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
+              <Utensils size={48} color="#d1d5db" />
+              <div style={{ fontWeight: 'bold', fontSize: '14px', marginTop: '10px' }}>No Item Selected</div>
+            </div>
+          ) : (
+            cart.map(item => (
+              <div key={item.cartItemId} style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', borderBottom: '1px solid #f9fafb' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '12px' }}>{item.name}</div>
+                  {item.note && <div style={{ fontSize: '10px', color: '#94161c', fontStyle: 'italic' }}>* {item.note}</div>}
+                  <div style={{ fontSize: '10px', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    ₹{item.price} /ea
+                    <button style={{ border: 'none', background: 'transparent', cursor: 'pointer', opacity: 0.6, padding: 0 }}
+                      onClick={() => {
+                        const note = prompt('Enter custom instructions for kitchen:');
+                        if (note !== null) {
+                          setCart(prev => prev.map(i => i.cartItemId === item.cartItemId ? { ...i, note } : i));
+                        }
+                      }}>
+                      <MessageSquare size={12} color="#94161c" />
+                    </button>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '80px', justifyContent: 'center' }}>
+                  <button style={{ border: 'none', background: 'transparent', cursor: 'pointer' }} onClick={() => updateQty(item.cartItemId, -1)}><Minus size={12} /></button>
+                  <span style={{ fontSize: '12px', fontWeight: '500' }}>{item.qty}</span>
+                  <button style={{ border: 'none', background: 'transparent', cursor: 'pointer' }} onClick={() => updateQty(item.cartItemId, 1)}><Plus size={12} /></button>
+                </div>
+                <div style={{ width: '80px', textAlign: 'right', fontSize: '12px', fontWeight: 'bold' }}>₹{item.price * item.qty}</div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Financials & Footer */}
+        <div style={{ background: '#fdf2f2', borderTop: '1px solid #fee2e2' }}>
+          {/* Advanced Tax & Discount Section */}
+          <div style={{ padding: '12px', fontSize: '12px', color: '#6b7280', borderBottom: '1px solid #fee2e2' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontWeight: '500' }}>Subtotal:</span>
+              <span style={{ fontWeight: '600', color: '#374151' }}>₹{subtotal.toFixed(2)}</span>
+            </div>
+            {discountAmt > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: '#10b981' }}>
+                <span style={{ fontWeight: '500' }}>Discount (Custom):</span>
+                <span style={{ fontWeight: '600' }}>-₹{discountAmt.toFixed(2)}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: '500' }}>GST (5%):</span>
+              <span style={{ fontWeight: '600', color: '#374151' }}>₹{taxes.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #fee2e2' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                className="btn-pp"
+                style={{ background: discountAmt > 0 ? '#10b981' : 'transparent', color: discountAmt > 0 ? 'white' : '#94161c', border: discountAmt > 0 ? 'none' : '1px solid #94161c', fontSize: '11px', padding: '6px 12px', transition: 'all 0.2s', fontWeight: '600', width: 'fit-content' }}
+                onClick={() => discountAmt > 0 ? setDiscountAmt(0) : setShowDiscountModal(true)}
+              >
+                {discountAmt > 0 ? 'Remove Discount' : 'Custom Discount'}
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: 'bold' }}>SPLIT:</span>
+                <button style={{ border: '1px solid #e5e7eb', background: 'white', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => setSplitWays(Math.max(1, splitWays - 1))}>-</button>
+                <span style={{ fontSize: '12px', fontWeight: 'bold', width: '12px', textAlign: 'center' }}>{splitWays}</span>
+                <button style={{ border: '1px solid #e5e7eb', background: 'white', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => setSplitWays(splitWays + 1)}>+</button>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '600' }}>NET PAYABLE</span>
+              <div style={{ fontSize: '20px', fontWeight: '900', color: '#94161c' }}>₹{grandTotal.toFixed(2)}</div>
+              {splitWays > 1 && (
+                <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 'bold' }}>
+                  (₹{(grandTotal / splitWays).toFixed(2)} / each)
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ padding: '8px' }}>
+            <div className="payment-chip-row">
+              {['Cash', 'Card', 'UPI'].map(method => (
+                <div
+                  key={method}
+                  className={`payment-chip ${paymentMethod === method ? 'selected' : ''}`}
+                  onClick={() => setPaymentMethod(method)}
+                >
+                  {method === 'Cash' ? <Banknote size={14} color={paymentMethod === 'Cash' ? "#94161c" : "#6b7280"} /> :
+                    method === 'Card' ? <CreditCard size={14} color={paymentMethod === 'Card' ? "#94161c" : "#6b7280"} /> :
+                      <Smartphone size={14} color={paymentMethod === 'UPI' ? "#94161c" : "#6b7280"} />}
+                  {method}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => setIsPaid(!isPaid)}>
+              <input type="checkbox" checked={isPaid} readOnly />
+              <span style={{ fontSize: '11px', color: '#374151', fontWeight: 'bold' }}>Mark as Paid to Free Table</span>
+            </div>
+          </div>
+
+          <div className="footer-btn-grid">
+            <button className="btn-maroon" onClick={() => handleAction('Save')}>Save</button>
+            <button className="btn-maroon" onClick={() => handleAction('Save & Print')}>Save & Print</button>
+            <button className="btn-grey" onClick={() => handleAction('KOT')}>KOT</button>
+            <button className="btn-grey" style={{ background: '#374151' }} onClick={() => handleAction('KOT & Print')}>KOT & Print</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Modifier Modal Overlay */}
+      {showModifierModal && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'white', padding: '24px', borderRadius: '8px', width: '300px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ marginBottom: '16px', fontWeight: 'bold' }}>Attributes for {showModifierModal.name}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {showModifierModal.modifiers.map(mod => (
+                <button
+                  key={mod}
+                  onClick={() => addToCart(showModifierModal, mod)}
+                  style={{ padding: '12px', border: '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'left', background: '#f9fafb', cursor: 'pointer' }}
+                >
+                  {mod}
+                </button>
+              ))}
+              <button
+                onClick={() => addToCart(showModifierModal, 'Regular')}
+                style={{ padding: '12px', border: '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'left', background: '#f9fafb', cursor: 'pointer' }}
+              >
+                Regular (No Mods)
+              </button>
+            </div>
+            <button
+              onClick={() => setShowModifierModal(null)}
+              style={{ padding: '8px', marginTop: '16px', width: '100%', border: 'none', background: 'transparent', color: 'red', cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Discount Modal Overlay */}
+      {showDiscountModal && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'white', padding: '24px', borderRadius: '8px', width: '300px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ marginBottom: '16px', fontWeight: 'bold', borderBottom: '1px solid #fee2e2', paddingBottom: '8px', color: '#94161c' }}>Manager Override Required</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+              <input
+                type="number"
+                placeholder="Discount Amount (₹)"
+                value={discountInput}
+                onChange={(e) => setDiscountInput(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none' }}
+              />
+              <input
+                type="password"
+                placeholder="Manager PIN (e.g. 9999)"
+                value={managerInput}
+                onChange={(e) => setManagerInput(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={handleApplyDiscount} style={{ flex: 1, padding: '10px', background: '#94161c', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Authenticate</button>
+              <button onClick={() => setShowDiscountModal(false)} style={{ flex: 1, padding: '10px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* --- ANALYTICS DASHBOARD --- */
+const AnalyticsDashboard = ({ orderHistory }) => {
+  const totalSales = orderHistory.reduce((acc, order) => acc + order.grandTotal, 0);
+  const totalOrders = orderHistory.length;
+  const avgBill = totalOrders > 0 ? (totalSales / totalOrders).toFixed(2) : '0.00';
+
+  const payments = { Cash: 0, Card: 0, UPI: 0 };
+  const categories = {};
+  const itemsMap = {};
+  const hoursData = {};
+
+  let totalDiscounts = 0;
+
+  orderHistory.forEach(order => {
+    payments[order.paymentMethod] = (payments[order.paymentMethod] || 0) + order.grandTotal;
+
+    // Tracking Discounts for Alerts
+    totalDiscounts += order.discountAmt || 0;
+
+    // Peak hour
+    const hour = new Date(order.timestamp).getHours();
+    const formattedHour = hour % 12 || 12;
+    const ampm = hour < 12 ? 'AM' : 'PM';
+    const hourKey = `${formattedHour}:00 ${ampm} - ${formattedHour + 1}:00 ${ampm}`;
+    hoursData[hourKey] = (hoursData[hourKey] || 0) + 1;
+
+    order.cart.forEach(item => {
+      // Category 
+      categories[item.cat] = (categories[item.cat] || 0) + (item.price * item.qty);
+      // Items 
+      if (!itemsMap[item.id]) itemsMap[item.id] = { name: item.name, qty: 0, revenue: 0 };
+      itemsMap[item.id].qty += item.qty;
+      itemsMap[item.id].revenue += (item.price * item.qty);
+    });
+  });
+
+  const topItems = Object.values(itemsMap).sort((a, b) => b.qty - a.qty).slice(0, 5);
+  const topCategories = Object.entries(categories).sort((a, b) => b[1] - a[1]);
+  const peakHoursArr = Object.entries(hoursData).sort((a, b) => b[1] - a[1]);
+
+  // --- Smart Alerts Logic ---
+  const alerts = [];
+
+  // 1. Discount Alert: Warn if total daily discount exceeds 5% of gross sales (custom threshold)
+  const grossSales = totalSales + totalDiscounts;
+  if (totalDiscounts > (grossSales * 0.05) && grossSales > 0) {
+    alerts.push(`High Discount Rate: ₹${totalDiscounts.toFixed(2)} Given. Review promotional limits.`);
+  }
+
+  // 2. Out of Stock / Low Stock Simulation Alert
+  const lowStockItem = MENU_ITEMS.find(i => !i.inStock);
+  if (lowStockItem) {
+    alerts.push(`Inventory Warning: "${lowStockItem.name}" is currently marked Out of Stock. Supplier action required.`);
+  }
+
+  // 3. Performance Drop (Simulated 18% drop for specific item vs yesterday)
+  // In a real app, this compares to historical DB data. We calculate from existing items dynamically.
+  if (itemsMap[2] && itemsMap[2].qty < 5) { // Assuming Item 2 is 'Chicken Lollipop'
+    alerts.push(`Performance: "Chicken Lollipop" volume is lower than average moving velocity today.`);
+  }
+
+  const discountLogs = orderHistory.filter(o => o.discountAmt > 0).map(o => ({
+    id: o.id,
+    tableId: o.tableId,
+    amount: o.discountAmt,
+    authorizer: o.discountAuth,
+    time: new Date(o.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }));
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f9fafb' }} className="animate-fade-in no-scrollbar">
+      <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <BarChart3 size={20} color="#94161c" /> Business Analytics
+      </h2>
+
+      {/* Smart Alerts Banner Area */}
+      {alerts.length > 0 && (
+        <div style={{ marginBottom: '24px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '16px' }}>
+          <h3 style={{ fontSize: '13px', fontWeight: 'bold', color: '#b45309', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertTriangle size={16} color="#d97706" /> Smart Insights (Today)
+          </h3>
+          <ul style={{ listStyleType: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {alerts.map((alert, i) => (
+              <li key={i} style={{ fontSize: '13px', color: '#92400e', background: 'rgba(253, 230, 138, 0.4)', padding: '8px 12px', borderRadius: '4px' }}>
+                • {alert}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Top Value Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <div style={{ color: '#6b7280', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Daily Sales (Net)</div>
+          <div style={{ fontSize: '24px', fontWeight: '900', color: '#94161c', marginTop: '8px' }}>₹{totalSales.toFixed(2)}</div>
+        </div>
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <div style={{ color: '#6b7280', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Orders</div>
+          <div style={{ fontSize: '24px', fontWeight: '900', color: '#374151', marginTop: '8px' }}>{totalOrders}</div>
+        </div>
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <div style={{ color: '#6b7280', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Avg Bill Value</div>
+          <div style={{ fontSize: '24px', fontWeight: '900', color: '#374151', marginTop: '8px' }}>₹{avgBill}</div>
+        </div>
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <div style={{ color: '#6b7280', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Discounts Auth</div>
+          <div style={{ fontSize: '24px', fontWeight: '900', color: '#374151', marginTop: '8px' }}>₹{totalDiscounts.toFixed(2)}</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+        {/* Payment Split */}
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><PieChart size={16} color="#4b5563" /> Payment Split</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {Object.entries(payments).map(([method, amount]) => (
+              <div key={method} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #f3f4f6' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '500', color: '#4b5563' }}>
+                  {method === 'Cash' ? <Banknote size={14} color="#10b981" /> : method === 'Card' ? <CreditCard size={14} color="#3b82f6" /> : <Smartphone size={14} color="#8b5cf6" />}
+                  {method}
+                </span>
+                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>₹{amount.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Peak Hours */}
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={16} color="#4b5563" /> Peak Hour Analysis (Orders)</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {peakHoursArr.slice(0, 5).map(([hour, count]) => (
+              <div key={hour} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #f3f4f6' }}>
+                <span style={{ fontSize: '13px', fontWeight: '500', color: '#4b5563' }}>{hour}</span>
+                <span style={{ fontSize: '14px', fontWeight: 'bold', background: '#fdf2f2', color: '#94161c', padding: '2px 8px', borderRadius: '12px' }}>{count} Orders</span>
+              </div>
+            ))}
+            {peakHoursArr.length === 0 && <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No orders settled yet.</span>}
+          </div>
+        </div>
+
+        {/* Discount Audit Trail */}
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #fecaca', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#b91c1c' }}><AlertTriangle size={16} color="#b91c1c" /> Discount Report</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', fontSize: '11px', fontWeight: 'bold', color: '#9ca3af', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>
+              <span style={{ flex: 1 }}>TIME & TABLE</span>
+              <span style={{ width: '80px', textAlign: 'center' }}>AUTHORIZER</span>
+              <span style={{ width: '60px', textAlign: 'right' }}>AMOUNT</span>
+            </div>
+            {discountLogs.map((log, idx) => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #f3f4f6' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#1f2937' }}>{log.tableId}</span>
+                  <span style={{ fontSize: '10px', color: '#6b7280' }}>{log.time}</span>
+                </div>
+                <span style={{ width: '80px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#374151', background: '#f3f4f6', padding: '2px 4px', borderRadius: '4px' }}>{log.authorizer}</span>
+                <span style={{ width: '60px', textAlign: 'right', fontSize: '13px', fontWeight: 'bold', color: '#94161c' }}>-₹{log.amount}</span>
+              </div>
+            ))}
+            {discountLogs.length === 0 && <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No overriding discounts have been authenticated today.</span>}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+        {/* Category Sales */}
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart3 size={16} color="#4b5563" /> Category-wise Sales</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {topCategories.slice(0, 5).map(([cat, amount]) => (
+              <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #f3f4f6' }}>
+                <span style={{ fontSize: '13px', fontWeight: '500', color: '#4b5563' }}>{cat}</span>
+                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>₹{amount.toFixed(2)}</span>
+              </div>
+            ))}
+            {topCategories.length === 0 && <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No orders settled yet.</span>}
+          </div>
+        </div>
+
+        {/* Top Items */}
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><TrendingUp size={16} color="#4b5563" /> Top Selling Items (Qty & Rev)</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', fontSize: '11px', fontWeight: 'bold', color: '#9ca3af', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>
+              <span style={{ flex: 1 }}>ITEM</span>
+              <span style={{ width: '40px', textAlign: 'center' }}>QTY</span>
+              <span style={{ width: '60px', textAlign: 'right' }}>REVENUE</span>
+            </div>
+            {topItems.map((item, idx) => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #f3f4f6' }}>
+                <span style={{ flex: 1, fontSize: '13px', fontWeight: '500', color: '#1f2937' }}>{item.name}</span>
+                <span style={{ width: '40px', textAlign: 'center', fontSize: '13px', fontWeight: 'bold', color: '#4b5563' }}>{item.qty}</span>
+                <span style={{ width: '60px', textAlign: 'right', fontSize: '13px', fontWeight: 'bold', color: '#94161c' }}>₹{item.revenue}</span>
+              </div>
+            ))}
+            {topItems.length === 0 && <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No orders settled yet.</span>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function App() {
+  const [view, setView] = useState('tables');
+  const [selectedTable, setSelectedTable] = useState(null);
+
+  // PERSISTENCE LOGIC
+  const [tables, setTables] = useState(() => {
+    const saved = localStorage.getItem('pos_tables_v2');
+    return saved ? JSON.parse(saved) : INITIAL_TABLES;
+  });
+
+  const [orderHistory, setOrderHistory] = useState(() => {
+    const saved = localStorage.getItem('pos_order_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [nonTableOrders, setNonTableOrders] = useState(() => {
+    const saved = localStorage.getItem('pos_nontable_orders_v2');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('pos_tables_v2', JSON.stringify(tables));
+  }, [tables]);
+
+  useEffect(() => {
+    localStorage.setItem('pos_order_history', JSON.stringify(orderHistory));
+  }, [orderHistory]);
+
+  useEffect(() => {
+    localStorage.setItem('pos_nontable_orders_v2', JSON.stringify(nonTableOrders));
+  }, [nonTableOrders]);
+
+  const handleSelectTable = (table) => {
+    setSelectedTable(table);
+    setView('ordering');
+  };
+
+  const handleCreateNonTableOrder = (type) => {
+    const newId = `${type === 'Delivery' ? 'DEL' : 'TAK'}-${Math.floor(Math.random() * 9000) + 1000}`;
+    const newOrder = {
+      id: newId,
+      name: `${newId}`,
+      status: 'blank', // Will turn 'running' when items added
+      type: type,
+      order: [],
+      phone: ''
+    };
+    setNonTableOrders(prev => [...prev, newOrder]);
+    setSelectedTable(newOrder); // Using selectedTable state for both tables & nontables uniformly
+    setView('ordering');
+  };
+
+  const saveOrderToTable = (tableId, orderItems, newStatus) => {
+    if (String(tableId).startsWith('DEL-') || String(tableId).startsWith('TAK-')) {
+      setNonTableOrders(prev => {
+        const existing = prev.find(o => o.id === tableId);
+        if (existing) {
+          if (orderItems.length === 0) return prev.filter(o => o.id !== tableId);
+          return prev.map(o => o.id === tableId ? { ...o, order: orderItems, status: newStatus } : o);
+        }
+        return prev;
+      });
+      setView('nontables');
+    } else {
+      setTables(prev => prev.map(t => {
+        if (t.id === tableId) {
+          return {
+            ...t,
+            order: orderItems,
+            status: orderItems.length === 0 ? 'blank' : newStatus
+          };
+        }
+        return t;
+      }));
+      setView('tables');
+    }
+    setSelectedTable(null);
+  };
+
+  const settleTable = (tableId, orderDetails) => {
+    if (orderDetails && orderDetails.cart && orderDetails.cart.length > 0) {
+      setOrderHistory(prev => [...prev, {
+        id: Date.now().toString(),
+        tableId,
+        ...orderDetails
+      }]);
+    }
+
+    if (String(tableId).startsWith('DEL-') || String(tableId).startsWith('TAK-')) {
+      // Remove settled external order entirely from "running" state
+      setNonTableOrders(prev => prev.filter(o => o.id !== tableId));
+      setView('nontables');
+    } else {
+      setTables(prev => prev.map(t => {
+        if (t.id === tableId) {
+          return { ...t, order: [], status: 'blank' }; // Mark as blank/paid
+        }
+        return t;
+      }));
+      setView('tables');
+    }
+    setSelectedTable(null);
+  };
+
+  const markOrderReady = (order) => {
+    saveOrderToTable(order.id, order.order, 'printed')
+    alert(`Order for ${order.name} marked as ready! Front-stage notified.`);
+    setView('kds')
+  };
+
+  return (
+    <div className="app-container">
+      <TopHeader onViewChange={setView} />
+
+      <main style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        {view === 'tables' && (
+          <TableManagement tables={tables} onSelectTable={handleSelectTable} />
+        )}
+        {view === 'nontables' && (
+          <NonTableManagement orders={nonTableOrders} onSelectOrder={handleSelectTable} onCreateOrder={handleCreateNonTableOrder} />
+        )}
+        {view === 'analytics' && (
+          <AnalyticsDashboard orderHistory={orderHistory} />
+        )}
+        {view === 'kds' && (
+          <KitchenDisplay tables={tables} nonTableOrders={nonTableOrders} onMarkReady={markOrderReady} />
+        )}
+        {view === 'ordering' && (
+          <OrderingSystem
+            table={selectedTable}
+            initialOrder={selectedTable?.order || []}
+            onBack={() => {
+              if (selectedTable && (String(selectedTable.id).startsWith('DEL-') || String(selectedTable.id).startsWith('TAK-'))) {
+                setView('nontables');
+              } else {
+                setView('tables');
+              }
+            }}
+            onSaveOrder={saveOrderToTable}
+            onSettleTable={settleTable}
+          />
+        )}
+      </main>
+
+      {/* Print Overlay - Now connected to actual active order */}
+      <div className="print-only">
+        <div style={{ margin: '0 auto', width: '300px', padding: '20px', fontFamily: 'monospace' }}>
+          <h3 style={{ textAlign: 'center' }}>TYDE CAFE</h3>
+          <p style={{ textAlign: 'center', fontSize: '10px' }}>Tax Invoice</p>
+          <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+            <span>Table: {selectedTable?.name || 'Walk-In'}</span>
+            <span>{new Date().toLocaleTimeString()}</span>
+          </div>
+          <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
+          <div style={{ display: 'flex', borderBottom: '1px solid #000', paddingBottom: '5px' }}>
+            <span style={{ flex: 1 }}>Item</span>
+            <span style={{ width: '40px', textAlign: 'center' }}>Qty</span>
+            <span style={{ width: '60px', textAlign: 'right' }}>Total</span>
+          </div>
+          <div style={{ paddingTop: '10px' }}>
+            {selectedTable?.order?.map(item => (
+              <div style={{ display: 'flex', marginBottom: '4px' }} key={item.cartItemId}>
+                <span style={{ flex: 1, fontSize: '11px' }}>{item.name}</span>
+                <span style={{ width: '40px', textAlign: 'center', fontSize: '11px' }}>{item.qty}</span>
+                <span style={{ width: '60px', textAlign: 'right', fontSize: '11px' }}>{item.price * item.qty}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ borderBottom: '1px dashed #000', margin: '20px 0 10px' }}></div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', marginBottom: '4px' }}>
+            <span style={{ marginRight: '20px' }}>GST (5%):</span>
+            <span>Included</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '10px' }}>
+            <span>GRAND TOTAL</span>
+            <span>₹{selectedTable?.order?.reduce((acc, i) => acc + (i.price * i.qty), 0)}</span>
+          </div>
+          <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '10px' }}>Thank You for Visiting!</p>
+        </div>
+      </div>
+    </div>
+  );
+}
