@@ -980,8 +980,8 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
       <html>
         <head>
           <style>
-             @page { margin: 0; size: 80mm auto; }
-             body { margin: 0; }
+             @page { margin: 0; }
+             body { margin: 0; padding: 4mm; }
           </style>
         </head>
         <body>
