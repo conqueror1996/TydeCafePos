@@ -846,7 +846,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
     // Fallback: Generate a simplified HTML representation for the browser print queue
     // tailored to 80mm thermal paper widths
     let printContent = `
-      <div style="width: 80mm; font-family: 'Courier New', Courier, monospace; font-size: 12px; padding: 10px; color: black; background: white;">
+      <div style="width: 80mm; font-family: 'Courier New', Courier, monospace; font-size: 14px; font-weight: bold; padding: 10px; color: #000; background: white;">
     `;
 
     const now = new Date();
@@ -857,10 +857,10 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
 
     if (type === 'BILL') {
       printContent += `
-          <h2 style="font-size: 16px; margin: 0 0 5px 0;">${settings.billHeader || 'Tyde Cafe'}</h2>
-          <div>Nerul Ferry Terminal</div>
+          <h2 style="font-size: 20px; font-weight: 900; margin: 0 0 5px 0;">${settings.billHeader || 'Tyde Cafe'}</h2>
+          <div style="font-size: 16px; font-weight: bold;">Nerul Ferry Terminal</div>
           <div>--------------------------------</div>
-          <div style="text-align: left;">
+          <div style="text-align: left; font-size: 14px; font-weight: bold;">
             <div>Name: </div>
             <div>--------------------------------</div>
             <div>Date: ${dateStr}</div>
@@ -869,8 +869,8 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
             <div>Bill No.: ${Math.floor(1000 + Math.random() * 9000)}</div>
           </div>
           <div>--------------------------------</div>
-          <table style="width: 100%; text-align: left; font-size: 12px;">
-            <tr style="border-bottom: 1px dashed black;">
+          <table style="width: 100%; text-align: left; font-size: 14px; font-weight: bold;">
+            <tr style="border-bottom: 2px dashed black;">
               <th>Item</th>
               <th style="text-align: center;">Qty</th>
               <th style="text-align: right;">Amt</th>
@@ -878,32 +878,32 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         `;
       for (let item of orderData.items) {
         printContent += `<tr>
-             <td>${item.name}</td>
-             <td style="text-align: center;">${item.qty}</td>
-             <td style="text-align: right;">${(item.price * item.qty).toFixed(2)}</td>
+             <td style="padding-top: 4px;">${item.name}</td>
+             <td style="text-align: center; padding-top: 4px;">${item.qty}</td>
+             <td style="text-align: right; padding-top: 4px;">${(item.price * item.qty).toFixed(2)}</td>
            </tr>`;
       }
       printContent += `
           </table>
           <div>--------------------------------</div>
-          <div style="text-align: right;">
+          <div style="text-align: right; font-size: 14px; font-weight: bold;">
             <div>Subtotal: ${(orderData.subtotal || 0).toFixed(2)}</div>
             <div>S.C.: ${(orderData.serviceCharge || 0).toFixed(2)}</div>
             <div>Round: ${(orderData.roundOff || 0).toFixed(2)}</div>
-            <h3 style="margin: 5px 0;">Total: Rs.${(orderData.grandTotal || 0).toFixed(2)}</h3>
+            <h3 style="margin: 8px 0; font-size: 18px; font-weight: 900;">Total: Rs.${(orderData.grandTotal || 0).toFixed(2)}</h3>
           </div>
           <div>--------------------------------</div>
-          <div>${settings.billFooter || 'Sea you soon -- under the moon'}</div>
+          <div style="font-size: 14px; font-weight: bold;">${settings.billFooter || 'Sea you soon -- under the moon'}</div>
         `;
 
     } else { // KOT
       printContent += `
-          <div>${dateStr} ${timeStr}</div>
-          <h2 style="margin: 5px 0; font-size: 16px;">KOT - ${Math.floor(1 + Math.random() * 99)}</h2>
-          <div>${orderData.orderType || 'Dine In'}</div>
-          <div>Table No: ${orderData.tableName}</div>
+          <div style="font-size: 14px; font-weight: bold;">${dateStr} ${timeStr}</div>
+          <h2 style="margin: 5px 0; font-size: 22px; font-weight: 900;">KOT - ${Math.floor(1 + Math.random() * 99)}</h2>
+          <div style="font-size: 16px; font-weight: bold;">${orderData.orderType || 'Dine In'}</div>
+          <div style="font-size: 16px; font-weight: bold;">Table No: ${orderData.tableName}</div>
           <div>--------------------------------</div>
-          <table style="width: 100%; text-align: left; font-size: 12px;">
+          <table style="width: 100%; text-align: left; font-size: 16px; font-weight: bold;">
             <tr>
               <th style="width: 70%">Item</th>
               <th style="text-align: right;">Qty</th>
@@ -912,11 +912,11 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         `;
       for (let item of orderData.items) {
         printContent += `<tr>
-             <td>
+             <td style="padding-top: 6px;">
               <div>${item.name}</div>
-              ${item.note ? `<div style="font-size: 10px; font-style: italic;">*${item.note}</div>` : ''}
+              ${item.note ? `<div style="font-size: 12px; font-style: italic; color: #333;">*${item.note}</div>` : ''}
              </td>
-             <td style="text-align: right;">${item.qty}</td>
+             <td style="text-align: right; padding-top: 6px;">${item.qty}</td>
            </tr>`;
       }
       printContent += `
@@ -1074,7 +1074,7 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
         roundOff: roundOff,
         grandTotal: grandTotal,
         orderType: table?.type === 'Delivery' ? 'Delivery' : table?.type === 'Takeaway' ? 'Pick Up' : 'Dine In'
-      }, actionType.includes('Bill') ? 'BILL' : 'KOT');
+      }, actionType === 'Print Bill' || actionType.includes('Bill') ? 'BILL' : 'KOT');
     }
   };
 
@@ -1278,7 +1278,7 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
 
           <div className="footer-btn-grid">
             <button className="btn-maroon" onClick={() => handleAction('Save')}>Save</button>
-            <button className="btn-maroon" onClick={() => handleAction('Print Bill & Save')}>Print Bill</button>
+            <button className="btn-maroon" onClick={() => handleAction('Print Bill')}>Print Bill</button>
             <button className="btn-grey" onClick={() => handleAction('KOT')}>KOT</button>
             <button className="btn-grey" style={{ background: '#374151' }} onClick={() => handleAction('KOT & Print')}>KOT & Print</button>
           </div>
