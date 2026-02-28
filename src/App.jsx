@@ -842,9 +842,127 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
     await port.close();
   } catch (error) {
     console.warn("Direct Printing Hardware Handshake Failed. Emulating instead.", error);
-    alert(`Fast Direct Thermal Print Blocked: ${error.message}\nMake sure your thermal printer is USB connected. Falling back to the generic browser print queue for demonstration.`);
-    // Fallback if no printer selected or API blocked
-    window.print();
+
+    // Fallback: Generate a simplified HTML representation for the browser print queue
+    // tailored to 80mm thermal paper widths
+    let printContent = `
+      <div style="width: 80mm; font-family: 'Courier New', Courier, monospace; font-size: 12px; padding: 10px; color: black; background: white;">
+    `;
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-GB');
+    const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+    printContent += `<div style="text-align: center; margin-bottom: 10px;">`;
+
+    if (type === 'BILL') {
+      printContent += `
+          <h2 style="font-size: 16px; margin: 0 0 5px 0;">${settings.billHeader || 'Tyde Cafe'}</h2>
+          <div>Nerul Ferry Terminal</div>
+          <div>--------------------------------</div>
+          <div style="text-align: left;">
+            <div>Name: </div>
+            <div>--------------------------------</div>
+            <div>Date: ${dateStr}</div>
+            <div>${orderData.orderType || 'Dine In'} : ${orderData.tableName || 'B4'}</div>
+            <div>${timeStr}</div>
+            <div>Bill No.: ${Math.floor(1000 + Math.random() * 9000)}</div>
+          </div>
+          <div>--------------------------------</div>
+          <table style="width: 100%; text-align: left; font-size: 12px;">
+            <tr style="border-bottom: 1px dashed black;">
+              <th>Item</th>
+              <th style="text-align: center;">Qty</th>
+              <th style="text-align: right;">Amt</th>
+            </tr>
+        `;
+      for (let item of orderData.items) {
+        printContent += `<tr>
+             <td>${item.name}</td>
+             <td style="text-align: center;">${item.qty}</td>
+             <td style="text-align: right;">${(item.price * item.qty).toFixed(2)}</td>
+           </tr>`;
+      }
+      printContent += `
+          </table>
+          <div>--------------------------------</div>
+          <div style="text-align: right;">
+            <div>Subtotal: ${(orderData.subtotal || 0).toFixed(2)}</div>
+            <div>S.C.: ${(orderData.serviceCharge || 0).toFixed(2)}</div>
+            <div>Round: ${(orderData.roundOff || 0).toFixed(2)}</div>
+            <h3 style="margin: 5px 0;">Total: Rs.${(orderData.grandTotal || 0).toFixed(2)}</h3>
+          </div>
+          <div>--------------------------------</div>
+          <div>${settings.billFooter || 'Sea you soon -- under the moon'}</div>
+        `;
+
+    } else { // KOT
+      printContent += `
+          <div>${dateStr} ${timeStr}</div>
+          <h2 style="margin: 5px 0; font-size: 16px;">KOT - ${Math.floor(1 + Math.random() * 99)}</h2>
+          <div>${orderData.orderType || 'Dine In'}</div>
+          <div>Table No: ${orderData.tableName}</div>
+          <div>--------------------------------</div>
+          <table style="width: 100%; text-align: left; font-size: 12px;">
+            <tr>
+              <th style="width: 70%">Item</th>
+              <th style="text-align: right;">Qty</th>
+            </tr>
+            <tr><td colspan="2">--------------------------------</td></tr>
+        `;
+      for (let item of orderData.items) {
+        printContent += `<tr>
+             <td>
+              <div>${item.name}</div>
+              ${item.note ? `<div style="font-size: 10px; font-style: italic;">*${item.note}</div>` : ''}
+             </td>
+             <td style="text-align: right;">${item.qty}</td>
+           </tr>`;
+      }
+      printContent += `
+          </table>
+          <div>--------------------------------</div>
+        `;
+    }
+
+    printContent += `</div></div>`;
+
+    // Create iframe to isolate print styles
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+
+    document.body.appendChild(printFrame);
+
+    const frameDoc = printFrame.contentWindow.document;
+    frameDoc.open();
+    frameDoc.write(`
+      <html>
+        <head>
+          <style>
+             @page { margin: 0; size: 80mm auto; }
+             body { margin: 0; }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+        </body>
+      </html>
+    `);
+    frameDoc.close();
+
+    // Focus and print the iframe
+    printFrame.contentWindow.focus();
+    printFrame.contentWindow.print();
+
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(printFrame);
+    }, 1000);
   }
 };
 
