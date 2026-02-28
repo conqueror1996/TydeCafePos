@@ -57,7 +57,7 @@ const INITIAL_MENU_ITEMS = [
   { id: 504, name: 'Chicken Delight', price: 389, type: 'non-veg', cat: "Wrap's", inStock: true },
   { id: 505, name: 'Chicken Loaded', price: 399, type: 'non-veg', cat: "Wrap's", inStock: true },
 
-  // Pasta's (Stored as generic items but you could split them if needed)
+  // Pasta's
   { id: 601, name: 'Alfredo (White Sauce) Veg', price: 389, type: 'veg', cat: "Pasta's", inStock: true },
   { id: 602, name: 'Alfredo (White Sauce) Nonveg', price: 399, type: 'non-veg', cat: "Pasta's", inStock: true },
   { id: 603, name: 'Arrabiata (Red Sauce) Veg', price: 399, type: 'veg', cat: "Pasta's", inStock: true },
@@ -99,8 +99,8 @@ const INITIAL_MENU_ITEMS = [
   { id: 1003, name: 'Extra Chicken Salad', price: 399, type: 'non-veg', cat: "Salad's", inStock: true },
 
   // Desert
-  { id: 1101, name: 'Hot Chocolate', price: 289, type: 'veg', cat: 'Desert', inStock: true },
-  { id: 1102, name: 'Choclate with Brownie', price: 299, type: 'veg', cat: 'Desert', inStock: true }
+  { id: 1100, name: 'Hot Chocolate', price: 289, type: 'veg', cat: 'Desert', inStock: true },
+  { id: 1101, name: 'Choclate with Brownie', price: 299, type: 'veg', cat: 'Desert', inStock: true },
 ];
 
 const INITIAL_TABLES = [
@@ -846,54 +846,97 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
     // Fallback: Generate a simplified HTML representation for the browser print queue
     // tailored to 80mm thermal paper widths
     let printContent = `
-      <div style="width: 80mm; font-family: 'Courier New', Courier, monospace; font-size: 14px; font-weight: bold; padding: 10px; color: #000; background: white;">
+      <div style="width: 80mm; font-family: Helvetica, Arial, sans-serif; font-size: 13px; color: #000; background: white; margin: 0 auto;">
     `;
 
     const now = new Date();
-    const dateStr = now.toLocaleDateString('en-GB');
+    const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
     const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-    printContent += `<div style="text-align: center; margin-bottom: 10px;">`;
+    printContent += `<div style="text-align: center;">`;
 
     if (type === 'BILL') {
+      const totalQty = orderData.items.reduce((acc, item) => acc + item.qty, 0);
+
       printContent += `
-          <h2 style="font-size: 20px; font-weight: 900; margin: 0 0 5px 0;">${settings.billHeader || 'Tyde Cafe'}</h2>
-          <div style="font-size: 16px; font-weight: bold;">Nerul Ferry Terminal</div>
-          <div>--------------------------------</div>
-          <div style="text-align: left; font-size: 14px; font-weight: bold;">
-            <div>Name: </div>
-            <div>--------------------------------</div>
-            <div>Date: ${dateStr}</div>
-            <div>${orderData.orderType || 'Dine In'} : ${orderData.tableName || 'B4'}</div>
-            <div>${timeStr}</div>
-            <div>Bill No.: ${Math.floor(1000 + Math.random() * 9000)}</div>
+          <h2 style="font-size: 18px; font-weight: bold; margin: 0 0 5px 0;">${settings.billHeader || 'Tyde Cafe'}</h2>
+          <div style="font-size: 14px; margin-bottom: 10px;">Nerul Ferry Terminal</div>
+          
+          <div style="border-top: 1px solid black; margin: 8px 0;"></div>
+          <div style="text-align: left; font-size: 14px;">
+            Name: 
           </div>
-          <div>--------------------------------</div>
-          <table style="width: 100%; text-align: left; font-size: 14px; font-weight: bold;">
-            <tr style="border-bottom: 2px dashed black;">
-              <th>Item</th>
-              <th style="text-align: center;">Qty</th>
-              <th style="text-align: right;">Amt</th>
+          <div style="border-top: 1px solid black; margin: 8px 0;"></div>
+          
+          <div style="display: flex; justify-content: space-between; text-align: left; font-size: 14px;">
+            <div style="flex: 1.2;">
+              <div>Date: ${dateStr}</div>
+              <div>${timeStr}</div>
+              <div style="margin-top: 2px;">Cashier: biller</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-weight: bold;">${orderData.orderType || 'Dine In'}: ${orderData.tableName || 'B4'}</div>
+              <div style="margin-top: 18px;">Bill No.: ${Math.floor(1000 + Math.random() * 9000)}</div>
+            </div>
+          </div>
+          
+          <div style="border-top: 1px solid black; margin: 8px 0;"></div>
+          
+          <table style="width: 100%; text-align: left; font-size: 13px; border-collapse: collapse;">
+            <tr>
+              <th style="font-weight: normal; padding-bottom: 4px;">Item</th>
+              <th style="font-weight: normal; text-align: right; padding-bottom: 4px;">Qty.</th>
+              <th style="font-weight: normal; text-align: right; padding-bottom: 4px;">Price</th>
+              <th style="font-weight: normal; text-align: right; padding-bottom: 4px;">Amount</th>
             </tr>
+            <tr><td colspan="4" style="border-top: 1px solid black; margin: 8px 0;"></td></tr>
         `;
       for (let item of orderData.items) {
         printContent += `<tr>
              <td style="padding-top: 4px;">${item.name}</td>
-             <td style="text-align: center; padding-top: 4px;">${item.qty}</td>
+             <td style="text-align: right; padding-top: 4px;">${item.qty}</td>
+             <td style="text-align: right; padding-top: 4px;">${item.price.toFixed(2)}</td>
              <td style="text-align: right; padding-top: 4px;">${(item.price * item.qty).toFixed(2)}</td>
            </tr>`;
       }
       printContent += `
           </table>
-          <div>--------------------------------</div>
-          <div style="text-align: right; font-size: 14px; font-weight: bold;">
-            <div>Subtotal: ${(orderData.subtotal || 0).toFixed(2)}</div>
-            <div>S.C.: ${(orderData.serviceCharge || 0).toFixed(2)}</div>
-            <div>Round: ${(orderData.roundOff || 0).toFixed(2)}</div>
-            <h3 style="margin: 8px 0; font-size: 18px; font-weight: 900;">Total: Rs.${(orderData.grandTotal || 0).toFixed(2)}</h3>
+          
+          <div style="border-top: 1px solid black; margin: 8px 0;"></div>
+          
+          <div style="display: flex; font-size: 13px; text-align: right;">
+            <div style="flex: 3; padding-right: 15px;">
+              <div style="margin-bottom: 15px;">Total Qty: ${totalQty}</div>
+              <div>Service Charge</div>
+              <div>(Optional)</div>
+            </div>
+            <div style="flex: 2; display: flex;">
+               <div style="flex: 1; text-align: left;">
+                 <div>Sub</div>
+                 <div>Total</div>
+               </div>
+               <div style="flex: 1.5; text-align: right;">
+                 <div style="margin-bottom: 15px;"><br>${(orderData.subtotal || 0).toFixed(2)}</div>
+                 <div>${(orderData.serviceCharge || 0).toFixed(2)}</div>
+               </div>
+            </div>
           </div>
-          <div>--------------------------------</div>
-          <div style="font-size: 14px; font-weight: bold;">${settings.billFooter || 'Sea you soon -- under the moon'}</div>
+          
+          <div style="border-top: 1px solid black; margin: 8px 0;"></div>
+          
+          <div style="display: flex; justify-content: flex-end; font-size: 12px; margin-bottom: 4px;">
+            <div style="margin-right: 15px;">Round off</div>
+            <div>${orderData.roundOff > 0 ? '+' : ''}${(orderData.roundOff || 0).toFixed(2)}</div>
+          </div>
+          
+          <div style="display: flex; justify-content: flex-end; align-items: center;">
+            <div style="font-size: 15px; font-weight: bold; margin-right: 15px;">Grand Total</div>
+            <div style="font-size: 16px; font-weight: bold;">₹${(orderData.grandTotal || 0).toFixed(2)}</div>
+          </div>
+          
+          <div style="border-top: 1px solid black; margin: 8px 0;"></div>
+          
+          <div style="font-size: 13px; margin-top: 4px;">${settings.billFooter || 'Sea you soon &mdash; under the moon'}</div>
         `;
 
     } else { // KOT
