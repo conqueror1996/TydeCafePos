@@ -580,6 +580,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
     const boldOff = new Uint8Array([0x1B, 0x45, 0]);
     const centerAlign = new Uint8Array([0x1B, 0x61, 1]);
     const leftAlign = new Uint8Array([0x1B, 0x61, 0]);
+    const rightAlign = new Uint8Array([0x1B, 0x61, 2]);
     const cutPaper = new Uint8Array([0x1D, 0x56, 0x41, 0x08]);
 
     const w = async (bytes) => await writer.write(bytes);
@@ -630,62 +631,128 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
       const now = new Date();
       const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '/');
       const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-      if (settings.billLayout === 'bold') await w(boldOn);
-      await wT(`${dateStr} ${timeStr}\n`);
 
-      const kotNo = Math.floor(1 + Math.random() * 99);
-      await wT(`KOT - ${kotNo}\n`);
-
-      await wT(`${orderData.orderType || 'Dine In'}\n`);
-      await wT(`Table No: ${orderData.tableName}\n`);
-      if (settings.billLayout === 'bold') await w(boldOff);
-
-      if (settings.billLayout !== 'minimal') {
+      if (type === 'BILL') {
+        if (settings.billLayout === 'bold') await w(boldOn);
+        await wT(`${settings.billHeader || 'Tyde Cafe'}\n`);
+        if (settings.billLayout === 'bold') await w(boldOff);
+        await wT("Nerul Ferry Terminal\n");
         await wT("--------------------------------\n");
-      } else {
-        await wT("\n");
-      }
-
-      await w(leftAlign);
-
-      if (settings.billLayout === 'compact' || settings.billLayout === 'minimal') {
-        if (settings.billLayout !== 'minimal') await wT("Item           Qty\n--------------------------------\n");
-        for (const item of orderData.items) {
-          const nameStr = item.name.substring(0, 15).padEnd(16, ' ');
-          await wT(`${nameStr}${item.qty}\n`);
+        await w(leftAlign);
+        await wT("Name:\n");
+        await wT("--------------------------------\n");
+        const paddedDate = `Date: ${dateStr}`.padEnd(19, ' ');
+        const paddedOrder = `${orderData.orderType || 'Dine In'}: ${orderData.tableName || 'B4'}`.padEnd(13, ' ');
+        if (settings.billLayout === 'bold') {
+          await w(boldOn);
+          await wT(`${paddedDate}${paddedOrder}\n`);
+          await w(boldOff);
+        } else {
+          await wT(`${paddedDate}`);
+          await w(boldOn);
+          await wT(`${paddedOrder}\n`);
+          await w(boldOff);
         }
-      } else if (settings.billLayout === 'modern') {
-        await wT("Qty   Item\n--------------------------------\n");
+
+        await wT(`${timeStr}\n`);
+        const billNo = Math.floor(1000 + Math.random() * 9000);
+        await wT(`Cashier: biller   Bill No.: ${billNo}\n`);
+        await wT("--------------------------------\n");
+        await wT("Item              Qty  Price Amount\n");
+        await wT("--------------------------------\n");
+
+        let totalQty = 0;
         for (const item of orderData.items) {
-          const qtyStr = item.qty.toString().padEnd(6, ' ');
-          const nameStr = item.name.substring(0, 25);
-          await wT(`${qtyStr}${nameStr}\n`);
+          totalQty += item.qty;
+          const nameStr = item.name.substring(0, 16).padEnd(17, ' ');
+          const qtyStr = item.qty.toString().padStart(3, ' ');
+          const priceStr = item.price.toFixed(2).padStart(6, ' ');
+          const amtStr = (item.price * item.qty).toFixed(2).padStart(7, ' ');
+          await wT(`${nameStr}${qtyStr} ${priceStr} ${amtStr}\n`);
         }
-      } else if (settings.billLayout === 'bold') {
+        await wT("--------------------------------\n");
+        await w(rightAlign);
+
+        const subtotalStr = (orderData.subtotal || 0).toFixed(2).padStart(8, ' ');
+        await wT(` Total Qty: ${totalQty.toString().padEnd(3, ' ')}   Sub   ${subtotalStr}\n`);
+        await wT(`                  Total          \n`);
+
+        const serviceChargeStr = (orderData.serviceCharge || 0).toFixed(2).padStart(8, ' ');
+        await wT(` Service Charge          ${serviceChargeStr}\n`);
+        await wT(`     (Optional)                  \n`);
+
+        await wT("--------------------------------\n");
+
+        const roundOffStr = (orderData.roundOff > 0 ? '+' : '') + (orderData.roundOff || 0).toFixed(2).padStart(4, ' ');
+        await wT(`              Round off     ${roundOffStr}\n`);
+
         await w(boldOn);
-        await wT("ITEM                  QTY\n================================\n");
-        for (const item of orderData.items) {
-          const nameStr = item.name.substring(0, 20).padEnd(22, ' ');
-          const qtyStr = item.qty.toString();
-          await wT(`${nameStr}${qtyStr}\n`);
-        }
+        const gTotalStr = (orderData.grandTotal || 0).toFixed(2).padStart(8, ' ');
+        await wT(`      Grand Total     Rs.${gTotalStr}\n`);
         await w(boldOff);
-        await wT("================================\n");
-      } else {
-        // standard layout matched perfectly to user provided image
-        await wT("Item        Special Note   Qty\n");
         await wT("--------------------------------\n");
-        for (const item of orderData.items) {
-          const nameStr = item.name.substring(0, 11).padEnd(12, ' ');
-          let noteText = item.note ? item.note.substring(0, 14) : '--';
-          const noteStr = noteText.padEnd(15, ' ');
-          const qtyStr = item.qty.toString().padStart(5, ' ');
-          await wT(`${nameStr}${noteStr}${qtyStr}\n`);
-        }
-      }
+        await w(centerAlign);
+        await wT(`   ${settings.billFooter || 'Sea you soon -- under the moon'} \n`);
 
-      if (settings.billLayout !== 'minimal' && settings.billLayout !== 'bold') {
-        await wT("--------------------------------\n");
+      } else {
+        // --- KOT PRINTING ---
+        if (settings.billLayout === 'bold') await w(boldOn);
+        await wT(`${dateStr} ${timeStr}\n`);
+
+        const kotNo = Math.floor(1 + Math.random() * 99);
+        await wT(`KOT - ${kotNo}\n`);
+
+        await wT(`${orderData.orderType || 'Dine In'}\n`);
+        await wT(`Table No: ${orderData.tableName}\n`);
+        if (settings.billLayout === 'bold') await w(boldOff);
+
+        if (settings.billLayout !== 'minimal') {
+          await wT("--------------------------------\n");
+        } else {
+          await wT("\n");
+        }
+
+        await w(leftAlign);
+
+        if (settings.billLayout === 'compact' || settings.billLayout === 'minimal') {
+          if (settings.billLayout !== 'minimal') await wT("Item           Qty\n--------------------------------\n");
+          for (const item of orderData.items) {
+            const nameStr = item.name.substring(0, 15).padEnd(16, ' ');
+            await wT(`${nameStr}${item.qty}\n`);
+          }
+        } else if (settings.billLayout === 'modern') {
+          await wT("Qty   Item\n--------------------------------\n");
+          for (const item of orderData.items) {
+            const qtyStr = item.qty.toString().padEnd(6, ' ');
+            const nameStr = item.name.substring(0, 25);
+            await wT(`${qtyStr}${nameStr}\n`);
+          }
+        } else if (settings.billLayout === 'bold') {
+          await w(boldOn);
+          await wT("ITEM                  QTY\n================================\n");
+          for (const item of orderData.items) {
+            const nameStr = item.name.substring(0, 20).padEnd(22, ' ');
+            const qtyStr = item.qty.toString();
+            await wT(`${nameStr}${qtyStr}\n`);
+          }
+          await w(boldOff);
+          await wT("================================\n");
+        } else {
+          // standard layout matched perfectly to user provided image
+          await wT("Item        Special Note   Qty\n");
+          await wT("--------------------------------\n");
+          for (const item of orderData.items) {
+            const nameStr = item.name.substring(0, 11).padEnd(12, ' ');
+            let noteText = item.note ? item.note.substring(0, 14) : '--';
+            const noteStr = noteText.padEnd(15, ' ');
+            const qtyStr = item.qty.toString().padStart(5, ' ');
+            await wT(`${nameStr}${noteStr}${qtyStr}\n`);
+          }
+        }
+
+        if (settings.billLayout !== 'minimal' && settings.billLayout !== 'bold') {
+          await wT("--------------------------------\n");
+        }
       }
 
       // Only printing KOT layout per user request (no grand total or pricing footer)
@@ -726,7 +793,10 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
   // Calculations
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
   const taxableAmount = Math.max(0, subtotal - discountAmt);
-  const grandTotal = taxableAmount;
+  const serviceCharge = taxableAmount * 0.05; // 5% optional service charge
+  const rawTotal = taxableAmount + serviceCharge;
+  const grandTotal = Math.round(rawTotal);
+  const roundOff = grandTotal - rawTotal;
 
   const handleApplyDiscount = () => {
     if (managerInput === '9999') {
@@ -801,13 +871,15 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
     }
 
     if (actionType.includes('Print')) {
-      // User explicitly requested only KOT Option should be printed
       await printPosToSerial({
         tableName: table?.name || 'Walk-In',
         items: cart,
+        subtotal: subtotal,
+        serviceCharge: serviceCharge,
+        roundOff: roundOff,
         grandTotal: grandTotal,
         orderType: table?.type === 'Delivery' ? 'Delivery' : table?.type === 'Takeaway' ? 'Pick Up' : 'Dine In'
-      }, 'KOT');
+      }, actionType.includes('Bill') ? 'BILL' : 'KOT');
     }
   };
 
@@ -949,6 +1021,14 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
                 <span style={{ fontWeight: '600' }}>-₹{discountAmt.toFixed(2)}</span>
               </div>
             )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontWeight: '500' }}>Service Charge (Optional):</span>
+              <span style={{ fontWeight: '600', color: '#374151' }}>₹{serviceCharge.toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: '500' }}>Round off:</span>
+              <span style={{ fontWeight: '600', color: '#374151' }}>{roundOff > 0 ? '+' : ''}{roundOff.toFixed(2)}</span>
+            </div>
           </div>
 
           <div style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #fee2e2' }}>
@@ -1003,7 +1083,7 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
 
           <div className="footer-btn-grid">
             <button className="btn-maroon" onClick={() => handleAction('Save')}>Save</button>
-            <button className="btn-maroon" onClick={() => handleAction('Save & Print')}>Print KOT (Save)</button>
+            <button className="btn-maroon" onClick={() => handleAction('Print Bill & Save')}>Print Bill</button>
             <button className="btn-grey" onClick={() => handleAction('KOT')}>KOT</button>
             <button className="btn-grey" style={{ background: '#374151' }} onClick={() => handleAction('KOT & Print')}>KOT & Print</button>
           </div>
