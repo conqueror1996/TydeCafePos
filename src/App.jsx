@@ -5,7 +5,8 @@ import {
   Minus, X, Utensils, Smartphone, BarChart3, TrendingUp, PieChart, AlertTriangle, Truck, ShoppingBag, ChefHat, MessageSquare, CheckSquare, Sunset, Trash2
 } from 'lucide-react';
 import './index.css';
-
+import { get, set } from 'idb-keyval';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line } from 'recharts';
 // --- INITIAL MOCK DATA ---
 const MENU_VERSION = '1';
 
@@ -121,7 +122,7 @@ const INITIAL_TABLES = [
 
 // --- COMPONENTS ---
 
-const TopHeader = ({ onViewChange }) => {
+const TopHeader = ({ onViewChange, onSimulateAggregator }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="pos-header no-print">
@@ -143,6 +144,9 @@ const TopHeader = ({ onViewChange }) => {
         </div>
       </div>
       <button className="btn-pp btn-pp-primary" onClick={() => onViewChange('ordering', null)}>New Order</button>
+      <button className="btn-pp btn-pp-outline" onClick={onSimulateAggregator} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '10px', background: '#ffe4e6', color: '#e11d48', borderColor: '#fecdd3' }}>
+        <Smartphone size={14} /> + Online Sync
+      </button>
       <div className="header-search">
         <Search size={14} color="#6b7280" />
         <input type="text" placeholder="Bill No" />
@@ -230,7 +234,7 @@ const MenuSetupView = ({ categories, setCategories, menuItems, setMenuItems }) =
     }
   };
 
-  const deleteCategory = (cat) => {
+  const deleteCategory = () => {
     alert("Data removal is strictly disabled! Contact Administrator.");
   };
 
@@ -249,7 +253,7 @@ const MenuSetupView = ({ categories, setCategories, menuItems, setMenuItems }) =
     }
   };
 
-  const deleteItem = (id) => {
+  const deleteItem = () => {
     alert("Data removal is strictly disabled! Contact Administrator.");
   };
 
@@ -359,6 +363,7 @@ const MenuSetupView = ({ categories, setCategories, menuItems, setMenuItems }) =
 const FloorPlanSetupView = ({ tables, setTables }) => {
   const [newTableName, setNewTableName] = useState('');
   const [newTableType, setNewTableType] = useState('A/C');
+  const [tableToRemove, setTableToRemove] = useState(null);
 
   const addTable = () => {
     if (newTableName.trim() === '') return;
@@ -375,7 +380,17 @@ const FloorPlanSetupView = ({ tables, setTables }) => {
   };
 
   const removeTable = (id) => {
-    alert("Data removal is strictly disabled! Contact Administrator.");
+    const tableInfo = tables.find(t => t.id === id);
+    if (tableInfo && tableInfo.status !== 'blank') {
+      alert("Cannot remove a table with an active order.");
+      return;
+    }
+    setTableToRemove(id);
+  };
+
+  const confirmRemoveTable = () => {
+    setTables(tables.filter(t => t.id !== tableToRemove));
+    setTableToRemove(null);
   };
 
   return (
@@ -424,17 +439,50 @@ const FloorPlanSetupView = ({ tables, setTables }) => {
           </div>
         ))}
       </div>
+      {tableToRemove && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div className="animate-fade-in" style={{ background: 'white', padding: '28px', borderRadius: '12px', width: '340px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '12px', color: '#1f2937' }}>Delete Table?</h3>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px', lineHeight: '1.5' }}>Are you sure you want to completely remove this table from the floor plan?</p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setTableToRemove(null)}
+                style={{ flex: 1, padding: '12px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRemoveTable}
+                style={{ flex: 1, padding: '12px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 /* --- PRINTER SETTINGS VIEW --- */
-const PrinterSettingsView = ({ settings, onSaveSettings }) => {
+const PrinterSettingsView = ({ settings, onSaveSettings, categories }) => {
   const [localSettings, setLocalSettings] = useState(settings);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setLocalSettings(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const toggleCategory = (cat) => {
+    setLocalSettings(prev => {
+      const current = prev.separatePrintCategories || [];
+      if (current.includes(cat)) {
+        return { ...prev, separatePrintCategories: current.filter(c => c !== cat) };
+      } else {
+        return { ...prev, separatePrintCategories: [...current, cat] };
+      }
+    });
   };
 
   const handleSave = () => {
@@ -462,21 +510,65 @@ const PrinterSettingsView = ({ settings, onSaveSettings }) => {
 
           <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '12px' }}>KOT Printing Mode</label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#4b5563', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#4b5563', cursor: 'pointer', marginBottom: '12px' }}>
               <input type="checkbox" name="categorizedKOT" checked={localSettings.categorizedKOT} onChange={handleChange} style={{ width: '18px', height: '18px' }} />
-              Split KOTs by Item Category (e.g. Separate slip for Pizza vs Quick Snacks)
+              Split ALL KOTs heavily by Item Category (Every category gets its own slip)
             </label>
+
+            {!localSettings.categorizedKOT && (
+              <div style={{ padding: '12px', background: '#f3f4f6', borderRadius: '8px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#4b5563', marginBottom: '8px' }}>OR Select Specific Categories to Print Separately on their own slips:</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {categories.map(cat => (
+                    <label key={cat} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', border: `1px solid ${(localSettings.separatePrintCategories || []).includes(cat) ? '#94161c' : '#d1d5db'}`, padding: '6px 12px', borderRadius: '20px', background: (localSettings.separatePrintCategories || []).includes(cat) ? '#fdf2f2' : 'white', color: (localSettings.separatePrintCategories || []).includes(cat) ? '#94161c' : '#374151', cursor: 'pointer', transition: 'all 0.2s' }}>
+                      <input
+                        type="checkbox"
+                        checked={(localSettings.separatePrintCategories || []).includes(cat)}
+                        onChange={() => toggleCategory(cat)}
+                        style={{ display: 'none' }}
+                      />
+                      {(localSettings.separatePrintCategories || []).includes(cat) && <CheckSquare size={14} color="#94161c" />}
+                      {cat}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '12px' }}>Print Layout Theme</label>
-            <select name="billLayout" value={localSettings.billLayout} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white' }}>
+            <select name="billLayout" value={localSettings.billLayout} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white', marginBottom: '16px' }}>
               <option value="standard">Standard Detailed</option>
               <option value="compact">Compact (Saves Paper)</option>
               <option value="modern">Modern Clean</option>
               <option value="minimal">Ultra Minimalist</option>
               <option value="bold">Bold & High Contrast</option>
             </select>
+          </div>
+
+          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Typography</label>
+              <select name="printFontFamily" value={localSettings.printFontFamily || 'Helvetica, Arial, sans-serif'} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white', fontSize: '12px' }}>
+                <option value="Helvetica, Arial, sans-serif">Sans-Serif (Modern)</option>
+                <option value="'Courier New', Courier, monospace">Monospace (Receipt)</option>
+                <option value="'Times New Roman', Times, serif">Serif (Classic)</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Size (px)</label>
+              <input type="number" name="printFontSize" value={localSettings.printFontSize || 13} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '12px' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Weight</label>
+              <select name="printFontWeight" value={localSettings.printFontWeight || 'normal'} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white', fontSize: '12px' }}>
+                <option value="normal">Normal</option>
+                <option value="500">Medium</option>
+                <option value="bold">Bold</option>
+                <option value="900">Heavy</option>
+              </select>
+            </div>
           </div>
 
           <button onClick={handleSave} className="btn-pp btn-pp-primary" style={{ marginTop: '20px', padding: '12px', fontSize: '16px' }}>Save Settings</button>
@@ -487,6 +579,7 @@ const PrinterSettingsView = ({ settings, onSaveSettings }) => {
 };
 
 const TableManagement = ({ tables, onSelectTable, onClearTable }) => {
+  const [tableToClear, setTableToClear] = useState(null);
   const getTableTotal = (order) => order.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
   return (
@@ -523,7 +616,7 @@ const TableManagement = ({ tables, onSelectTable, onClearTable }) => {
                     <div style={{ display: 'flex', gap: '10px', marginTop: '10px', alignItems: 'center' }}>
                       <Printer size={14} color="#6b7280" />
                       {(table.status === 'kot' || table.status === 'printed') && <Eye size={14} color="#6b7280" />}
-                      <div onClick={(e) => { e.stopPropagation(); onClearTable(table.id); }} style={{ padding: '4px', background: '#fee2e2', borderRadius: '4px', cursor: 'pointer', display: 'flex', marginLeft: 'auto' }}>
+                      <div onClick={(e) => { e.stopPropagation(); setTableToClear(table.id); }} style={{ padding: '4px', background: '#fee2e2', borderRadius: '4px', cursor: 'pointer', display: 'flex', marginLeft: 'auto' }}>
                         <Trash2 size={14} color="#dc2626" />
                       </div>
                     </div>
@@ -537,6 +630,29 @@ const TableManagement = ({ tables, onSelectTable, onClearTable }) => {
           </div>
         </div>
       ))}
+
+      {tableToClear && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div className="animate-fade-in" style={{ background: 'white', padding: '28px', borderRadius: '12px', width: '340px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '12px', color: '#1f2937' }}>Clear Table?</h3>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px', lineHeight: '1.5' }}>Are you sure you want to completely discard this pending order?</p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setTableToClear(null)}
+                style={{ flex: 1, padding: '12px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { onClearTable(tableToClear); setTableToClear(null); }}
+                style={{ flex: 1, padding: '12px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Yes, Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -602,6 +718,14 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder }) => {
         {orders.length === 0 && <div style={{ color: '#9ca3af', fontStyle: 'italic', gridColumn: '1 / -1' }}>No active Takeaway or Delivery orders.</div>}
         {orders.map(order => {
           const tableTotal = getOrderTotal(order.order);
+          let bg = order.type === 'Delivery' ? '#fee2e2' : '#e0e7ff';
+          let text = order.type === 'Delivery' ? '#991b1b' : '#3730a3';
+          let border = order.type === 'Delivery' ? '#fca5a5' : '#a5b4fc';
+
+          if (order.type === 'Zomato') { bg = '#ffe4e6'; text = '#e11d48'; border = '#fda4af'; }
+          if (order.type === 'Swiggy') { bg = '#ffedd5'; text = '#c2410c'; border = '#fdba74'; }
+          if (order.type === 'Thrive') { bg = '#dcfce7'; text = '#166534'; border = '#86efac'; }
+
           return (
             <div
               key={order.id}
@@ -611,7 +735,7 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder }) => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '8px' }}>
                 <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#1f2937' }}>{order.name}</div>
-                <div style={{ fontSize: '10px', background: order.type === 'Delivery' ? '#fee2e2' : '#e0e7ff', color: order.type === 'Delivery' ? '#991b1b' : '#3730a3', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', border: `1px solid ${order.type === 'Delivery' ? '#fca5a5' : '#a5b4fc'}` }}>{order.type}</div>
+                <div style={{ fontSize: '10px', background: bg, color: text, padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', border: `1px solid ${border}` }}>{order.type}</div>
               </div>
               <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: 'auto' }}>{order.phone || 'Pending Finalization'}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', marginTop: 'auto' }}>
@@ -631,9 +755,9 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder }) => {
 const printPosToSerial = async (orderData, type = 'BILL') => {
   let settings = { billHeader: 'TYDE CAFE', billFooter: 'Thank You for Visiting!', categorizedKOT: false, billLayout: 'standard' };
   try {
-    const rawSettings = localStorage.getItem('pos_printer_settings');
-    if (rawSettings && rawSettings !== "undefined") {
-      settings = JSON.parse(rawSettings);
+    const rawSettings = await get('pos_printer_settings');
+    if (rawSettings) {
+      settings = rawSettings;
     }
   } catch (e) {
     console.error("Failed to parse printer settings", e);
@@ -658,12 +782,48 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
     const w = async (bytes) => await writer.write(bytes);
     const wT = async (text) => await writer.write(textEncoder.encode(text));
 
-    if (type === 'KOT' && settings.categorizedKOT) {
-      // Print Separate KOT for each category
-      const categories = [...new Set(orderData.items.map(i => i.cat))];
+    if (type === 'KOT') {
+      let groupsToPrint = [];
 
-      for (const cat of categories) {
-        const catItems = orderData.items.filter(i => i.cat === cat);
+      if (settings.categorizedKOT) {
+        // Split Everything heavily (Original Behavior)
+        const categoriesToPrint = [...new Set(orderData.items.map(i => i.cat))];
+        groupsToPrint = categoriesToPrint.map(cat => ({
+          title: `Cat: ${cat}`,
+          items: orderData.items.filter(i => i.cat === cat)
+        }));
+      } else if (settings.separatePrintCategories && settings.separatePrintCategories.length > 0) {
+        // Split specific categories into their own KOTs
+        const separateCats = settings.separatePrintCategories;
+        const mainItems = [];
+        const separatedGroups = {};
+
+        orderData.items.forEach(item => {
+          if (separateCats.includes(item.cat)) {
+            if (!separatedGroups[item.cat]) separatedGroups[item.cat] = [];
+            separatedGroups[item.cat].push(item);
+          } else {
+            mainItems.push(item);
+          }
+        });
+
+        // Push separated groups
+        Object.entries(separatedGroups).forEach(([cat, items]) => {
+          groupsToPrint.push({ title: `Station: ${cat}`, items });
+        });
+
+        // Push remaining main items on 1 KOT
+        if (mainItems.length > 0) {
+          groupsToPrint.push({ title: 'Main Kitchen', items: mainItems });
+        }
+      } else {
+        // Print all items together on 1 KOT
+        groupsToPrint = [{ title: 'All Items', items: orderData.items }];
+      }
+
+      // Loop through and print each required KOT slip and CUT PAPER between them
+      for (const group of groupsToPrint) {
+        if (group.items.length === 0) continue;
 
         await w(init);
         await w(centerAlign);
@@ -674,7 +834,8 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         await wT(`${dateStr} ${timeStr}\n`);
 
         const kotNo = Math.floor(Math.random() * 100);
-        await wT(`KOT (Cat: ${cat}) - ${kotNo}\n`);
+        await wT(`${settings.billHeader || 'Tyde Cafe'}\n`);
+        await wT(`KOT (${group.title}) - #${kotNo}\n`);
         await wT(`${orderData.orderType || 'Dine In'}\n`);
         await wT(`Table No: ${orderData.tableName}\n`);
         await wT("--------------------------------\n");
@@ -683,7 +844,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         await wT("Item        Special Note   Qty\n");
         await wT("--------------------------------\n");
 
-        for (const item of catItems) {
+        for (const item of group.items) {
           const nameStr = item.name.substring(0, 11).padEnd(12, ' ');
           let noteText = item.note ? item.note.substring(0, 14) : '--';
           const noteStr = noteText.padEnd(15, ' ');
@@ -693,6 +854,8 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         await wT("--------------------------------\n");
         await w(centerAlign);
         await wT("\n\n\n\n\n");
+
+        // This command physically cuts the paper for the specific slip on modern thermal printers
         await w(cutPaper);
       }
     } else {
@@ -749,9 +912,11 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         await wT(` Total Qty: ${totalQty.toString().padEnd(3, ' ')}   Sub   ${subtotalStr}\n`);
         await wT(`                  Total          \n`);
 
-        const serviceChargeStr = (orderData.serviceCharge || 0).toFixed(2).padStart(8, ' ');
-        await wT(` Service Charge          ${serviceChargeStr}\n`);
-        await wT(`     (Optional)                  \n`);
+        if (orderData.serviceCharge > 0) {
+          const serviceChargeStr = (orderData.serviceCharge || 0).toFixed(2).padStart(8, ' ');
+          await wT(` Service Charge          ${serviceChargeStr}\n`);
+          await wT(`     (Optional)                  \n`);
+        }
 
         await wT("--------------------------------\n");
 
@@ -841,7 +1006,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
     // Fallback: Generate a simplified HTML representation for the browser print queue
     // tailored to 80mm thermal paper widths
     let printContent = `
-      <div style="width: 80mm; font-family: Helvetica, Arial, sans-serif; font-size: 13px; color: #000; background: white; margin: 0 auto;">
+      <div style="width: 80mm; font-family: ${settings.printFontFamily || 'Helvetica, Arial, sans-serif'}; font-size: ${settings.printFontSize || '13'}px; font-weight: ${settings.printFontWeight || 'normal'}; color: #000; background: white; margin: 0 auto;">
     `;
 
     const now = new Date();
@@ -902,8 +1067,10 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
           <div style="display: flex; font-size: 13px; text-align: right;">
             <div style="flex: 3; padding-right: 15px;">
               <div style="margin-bottom: 15px;">Total Qty: ${totalQty}</div>
+              ${orderData.serviceCharge > 0 ? `
               <div>Service Charge</div>
               <div>(Optional)</div>
+              ` : ''}
             </div>
             <div style="flex: 2; display: flex;">
                <div style="flex: 1; text-align: left;">
@@ -912,7 +1079,9 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
                </div>
                <div style="flex: 1.5; text-align: right;">
                  <div style="margin-bottom: 15px;"><br>${(orderData.subtotal || 0).toFixed(2)}</div>
+                 ${orderData.serviceCharge > 0 ? `
                  <div>${(orderData.serviceCharge || 0).toFixed(2)}</div>
+                 ` : ''}
                </div>
             </div>
           </div>
@@ -935,32 +1104,72 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         `;
 
     } else { // KOT
-      printContent += `
-          <div style="font-size: 14px; font-weight: bold;">${dateStr} ${timeStr}</div>
-          <h2 style="margin: 5px 0; font-size: 22px; font-weight: 900;">KOT - ${Math.floor(1 + Math.random() * 99)}</h2>
-          <div style="font-size: 16px; font-weight: bold;">${orderData.orderType || 'Dine In'}</div>
-          <div style="font-size: 16px; font-weight: bold;">Table No: ${orderData.tableName}</div>
-          <div>--------------------------------</div>
-          <table style="width: 100%; text-align: left; font-size: 16px; font-weight: bold;">
-            <tr>
-              <th style="width: 70%">Item</th>
-              <th style="text-align: right;">Qty</th>
-            </tr>
-            <tr><td colspan="2">--------------------------------</td></tr>
-        `;
-      for (let item of orderData.items) {
-        printContent += `<tr>
-             <td style="padding-top: 6px;">
-              <div>${item.name}</div>
-              ${item.note ? `<div style="font-size: 12px; font-style: italic; color: #333;">*${item.note}</div>` : ''}
-             </td>
-             <td style="text-align: right; padding-top: 6px;">${item.qty}</td>
-           </tr>`;
+      let groupsToPrint = [];
+
+      if (settings.categorizedKOT) {
+        const categoriesToPrint = [...new Set(orderData.items.map(i => i.cat))];
+        groupsToPrint = categoriesToPrint.map(cat => ({
+          title: `Cat: ${cat}`,
+          items: orderData.items.filter(i => i.cat === cat)
+        }));
+      } else if (settings.separatePrintCategories && settings.separatePrintCategories.length > 0) {
+        const separateCats = settings.separatePrintCategories;
+        const mainItems = [];
+        const separatedGroups = {};
+
+        orderData.items.forEach(item => {
+          if (separateCats.includes(item.cat)) {
+            if (!separatedGroups[item.cat]) separatedGroups[item.cat] = [];
+            separatedGroups[item.cat].push(item);
+          } else {
+            mainItems.push(item);
+          }
+        });
+
+        Object.entries(separatedGroups).forEach(([cat, items]) => {
+          groupsToPrint.push({ title: `${cat}`, items });
+        });
+
+        if (mainItems.length > 0) {
+          groupsToPrint.push({ title: 'Main Kitchen', items: mainItems });
+        }
+      } else {
+        groupsToPrint = [{ title: 'All Items', items: orderData.items }];
       }
-      printContent += `
-          </table>
-          <div>--------------------------------</div>
+
+      for (let i = 0; i < groupsToPrint.length; i++) {
+        const group = groupsToPrint[i];
+        if (group.items.length === 0) continue;
+
+        printContent += `
+          <div style="${i < groupsToPrint.length - 1 ? 'page-break-after: always; margin-bottom: 20px;' : ''}">
+            <div style="font-size: 14px; font-weight: bold;">${dateStr} ${timeStr}</div>
+            <h2 style="margin: 5px 0; font-size: 22px; font-weight: 900;">KOT (${group.title}) - ${Math.floor(1 + Math.random() * 99)}</h2>
+            <div style="font-size: 16px; font-weight: bold;">${orderData.orderType || 'Dine In'}</div>
+            <div style="font-size: 16px; font-weight: bold;">Table No: ${orderData.tableName}</div>
+            <div>--------------------------------</div>
+            <table style="width: 100%; text-align: left; font-size: 16px; font-weight: bold;">
+              <tr>
+                <th style="width: 70%">Item</th>
+                <th style="text-align: right;">Qty</th>
+              </tr>
+              <tr><td colspan="2">--------------------------------</td></tr>
+          `;
+        for (let item of group.items) {
+          printContent += `<tr>
+               <td style="padding-top: 6px;">
+                <div>${item.name}</div>
+                ${item.note ? `<div style="font-size: 12px; font-style: italic; color: #333;">*${item.note}</div>` : ''}
+               </td>
+               <td style="text-align: right; padding-top: 6px;">${item.qty}</td>
+             </tr>`;
+        }
+        printContent += `
+            </table>
+            <div>--------------------------------</div>
+          </div>
         `;
+      }
     }
 
     printContent += `</div></div>`;
@@ -1005,19 +1214,41 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
 };
 
 
-const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTable, MENU_ITEMS, CATEGORIES }) => {
+const OrderingSystem = ({ table, tables, initialOrder, onBack, onSaveOrder, onSettleTable, onChangeTable, MENU_ITEMS, CATEGORIES, customers }) => {
   const [cart, setCart] = useState(initialOrder || []);
   const [activeCat, setActiveCat] = useState("Quick Snack's");
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modifiers & Discount State
-  const [showModifierModal, setShowModifierModal] = useState(null);
-  const [showDiscountModal, setShowDiscountModal] = useState(false);
-  const [discountAmt, setDiscountAmt] = useState(0);
-  const [discountAuth, setDiscountAuth] = useState('');
+  // Customer CRM State
+  const [customerPhone, setCustomerPhone] = useState(table?.phone || '');
+  const [customerName, setCustomerName] = useState(table?.customerName || '');
+  const [customerInfo, setCustomerInfo] = useState(null);
+  const [redeemedPoints, setRedeemedPoints] = useState(0);
 
-  const [discountInput, setDiscountInput] = useState('');
-  const [managerInput, setManagerInput] = useState('');
+  useEffect(() => {
+    if (customerPhone.length === 10 && customers && customers[customerPhone]) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCustomerInfo(customers[customerPhone]);
+      setCustomerName(customers[customerPhone].name);
+    } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCustomerInfo(null);
+      setRedeemedPoints(0);
+    }
+  }, [customerPhone, customers]);
+
+  // Modifiers & Modal State
+  const [showModifierModal, setShowModifierModal] = useState(null);
+  const [showNoteModal, setShowNoteModal] = useState(null);
+  const [customNoteText, setCustomNoteText] = useState('');
+
+  // Service Charge & Discount State
+  const [applyServiceCharge, setApplyServiceCharge] = useState(true);
+  const [serviceChargeRate, setServiceChargeRate] = useState(5);
+
+  const [applyDiscount, setApplyDiscount] = useState(false);
+  const [discountRate, setDiscountRate] = useState(10);
+  const discountAuth = applyDiscount ? 'Toggle' : '';
 
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [isPaid, setIsPaid] = useState(false);
@@ -1025,28 +1256,12 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
 
   // Calculations
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
-  const taxableAmount = Math.max(0, subtotal - discountAmt);
-  const serviceCharge = taxableAmount * 0.05; // 5% optional service charge
+  const discountAmt = applyDiscount ? (subtotal * (discountRate / 100)) : 0;
+  const taxableAmount = Math.max(0, subtotal - discountAmt - redeemedPoints);
+  const serviceCharge = applyServiceCharge ? (taxableAmount * (serviceChargeRate / 100)) : 0;
   const rawTotal = taxableAmount + serviceCharge;
   const grandTotal = Math.round(rawTotal);
   const roundOff = grandTotal - rawTotal;
-
-  const handleApplyDiscount = () => {
-    if (managerInput === '9999') {
-      const amt = parseFloat(discountInput);
-      if (!isNaN(amt) && amt >= 0 && amt <= subtotal) {
-        setDiscountAmt(amt);
-        setDiscountAuth('Manager (9999)');
-        setShowDiscountModal(false);
-        setDiscountInput('');
-        setManagerInput('');
-      } else {
-        alert("Enter a valid discount amount less than the subtotal.");
-      }
-    } else {
-      alert("Invalid Manager PIN! Authentication Failed.");
-    }
-  };
 
   const handleItemClick = (item) => {
     if (!item.inStock) return;
@@ -1122,7 +1337,7 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
 
     if (isPaid && actionType.includes('Save')) {
       // Settle and clear table with full analytics data
-      onSettleTable(table.id, { cart: updatedCart, subtotal, discountAmt, discountAuth, taxes: 0, grandTotal, paymentMethod, timestamp: new Date().toISOString() });
+      onSettleTable(table.id, { cart: updatedCart, subtotal, discountAmt, redeemedPoints, discountAuth, taxes: 0, grandTotal, paymentMethod, timestamp: new Date().toISOString(), phone: customerPhone, customerName });
     } else {
       // Just save order state
       setCart(updatedCart); // update local state so diff tracking is consistent
@@ -1212,16 +1427,59 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
         </div>
 
         <div style={{ padding: '8px 12px', display: 'flex', borderBottom: '1px solid #e5e7eb', alignItems: 'center', gap: '12px' }}>
-          <div style={{ border: '1px solid #94161c', color: '#94161c', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
-            {table?.name || 'Walk-In'}
-          </div>
+          {tables ? (
+            <select
+              value={table?.id || ''}
+              onChange={(e) => {
+                if (onChangeTable && e.target.value !== String(table?.id)) {
+                  onChangeTable(table.id, Number(e.target.value), cart);
+                }
+              }}
+              style={{ border: '1px solid #94161c', color: '#94161c', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', outline: 'none', background: 'white' }}
+            >
+              <option value={table?.id} disabled>{table?.name || 'Walk-In'}</option>
+              {tables.map(t => (
+                <option key={t.id} value={t.id}>{t.name} ({t.status})</option>
+              ))}
+            </select>
+          ) : (
+            <div style={{ border: '1px solid #94161c', color: '#94161c', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
+              {table?.name || 'Walk-In'}
+            </div>
+          )}
           <button onClick={onBack} style={{ background: 'transparent', border: 'none', fontSize: '11px', color: '#6b7280', cursor: 'pointer', textDecoration: 'underline' }}>
-            {table && (String(table.id).startsWith('DEL-') || String(table.id).startsWith('TAK-')) ? 'Back to Online' : 'Back to Tables'}
+            {table && (String(table.id).startsWith('DEL-') || String(table.id).startsWith('TAK-') || String(table.id).startsWith('ZOMATO-') || String(table.id).startsWith('SWIGGY-') || String(table.id).startsWith('THRIVE-')) ? 'Back to Online' : 'Back to Tables'}
           </button>
           <div style={{ marginLeft: 'auto', background: '#94161c', color: 'white', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
-            {table?.type === 'Delivery' ? 'Delivery' : table?.type === 'Takeaway' ? 'Takeaway' : 'Dine In'}
+            {table?.type === 'Delivery' ? 'Delivery' : table?.type === 'Takeaway' ? 'Takeaway' : ['Zomato', 'Swiggy', 'Thrive'].includes(table?.type) ? table?.type : 'Dine In'}
           </div>
         </div>
+
+        {/* --- CRM SECTION --- */}
+        <div style={{ padding: '8px 12px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+            <input type="text" placeholder="Phone 10-digit" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ flex: 1, padding: '6px', fontSize: '12px', border: `1px solid ${customerPhone.length === 10 ? '#10b981' : '#d1d5db'}`, borderRadius: '4px', outline: 'none' }} maxLength="10" />
+            <input type="text" placeholder="Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ flex: 1, padding: '6px', fontSize: '12px', border: '1px solid #d1d5db', borderRadius: '4px', outline: 'none' }} />
+          </div>
+          {customerInfo && (
+            <div style={{ padding: '6px 8px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '4px', fontSize: '11px', color: '#065f46', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Welcome back! (Visits: {customerInfo.visits})</span>
+              <span style={{ fontWeight: 'bold' }}>{customerInfo.points} Loyalty Pts</span>
+            </div>
+          )}
+          {customerInfo && customerInfo.points > 0 && redeemedPoints === 0 && (
+            <button onClick={() => setRedeemedPoints(Math.min(customerInfo.points, subtotal))} style={{ marginTop: '6px', width: '100%', padding: '4px', background: '#10b981', color: 'white', border: 'none', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>
+              Redeem {Math.min(customerInfo.points, subtotal)} Points for ₹{Math.min(customerInfo.points, subtotal)} Discount
+            </button>
+          )}
+          {redeemedPoints > 0 && (
+            <div style={{ marginTop: '6px', fontSize: '11px', color: '#dc2626', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>-{redeemedPoints} Points Applied Successfully</span>
+              <button onClick={() => setRedeemedPoints(0)} style={{ border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer', textDecoration: 'underline' }}>Undo</button>
+            </div>
+          )}
+        </div>
+        {/* --- END CRM SECTION --- */}
 
         <div style={{ padding: '8px 12px', display: 'flex', fontSize: '10px', fontWeight: 'bold', color: '#9ca3af', borderBottom: '1px solid #e5e7eb' }}>
           <div style={{ flex: 1 }}>ITEMS</div>
@@ -1246,10 +1504,8 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
                     ₹{item.price} /ea
                     <button style={{ border: 'none', background: 'transparent', cursor: 'pointer', opacity: 0.6, padding: 0 }}
                       onClick={() => {
-                        const note = prompt('Enter custom instructions for kitchen:');
-                        if (note !== null) {
-                          setCart(prev => prev.map(i => i.cartItemId === item.cartItemId ? { ...i, note } : i));
-                        }
+                        setCustomNoteText(item.note || '');
+                        setShowNoteModal(item);
                       }}>
                       <MessageSquare size={12} color="#94161c" />
                     </button>
@@ -1270,20 +1526,38 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
         <div style={{ background: '#fdf2f2', borderTop: '1px solid #fee2e2' }}>
           {/* Advanced Tax & Discount Section */}
           <div style={{ padding: '12px', fontSize: '12px', color: '#6b7280', borderBottom: '1px solid #fee2e2' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
               <span style={{ fontWeight: '500' }}>Subtotal:</span>
               <span style={{ fontWeight: '600', color: '#374151' }}>₹{subtotal.toFixed(2)}</span>
             </div>
-            {discountAmt > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', color: '#10b981' }}>
-                <span style={{ fontWeight: '500' }}>Discount (Custom):</span>
-                <span style={{ fontWeight: '600' }}>-₹{discountAmt.toFixed(2)}</span>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input type="checkbox" id="discount-toggle" checked={applyDiscount} onChange={(e) => setApplyDiscount(e.target.checked)} />
+                <label htmlFor="discount-toggle" style={{ fontWeight: '500', color: applyDiscount ? '#10b981' : '#6b7280', cursor: 'pointer' }}>Discount %:</label>
+                {applyDiscount && (
+                  <input type="number" value={discountRate} onChange={(e) => setDiscountRate(e.target.value)} style={{ width: '40px', padding: '2px', border: '1px solid #d1d5db', borderRadius: '4px', textAlign: 'center', fontSize: '11px' }} />
+                )}
+              </div>
+              <span style={{ fontWeight: '600', color: applyDiscount ? '#10b981' : '#d1d5db' }}>-₹{discountAmt.toFixed(2)}</span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input type="checkbox" id="service-toggle" checked={applyServiceCharge} onChange={(e) => setApplyServiceCharge(e.target.checked)} />
+                <label htmlFor="service-toggle" style={{ fontWeight: '500', color: applyServiceCharge ? '#374151' : '#6b7280', cursor: 'pointer' }}>Service Charge %:</label>
+                {applyServiceCharge && (
+                  <input type="number" value={serviceChargeRate} onChange={(e) => setServiceChargeRate(e.target.value)} style={{ width: '40px', padding: '2px', border: '1px solid #d1d5db', borderRadius: '4px', textAlign: 'center', fontSize: '11px' }} />
+                )}
+              </div>
+              <span style={{ fontWeight: '600', color: applyServiceCharge ? '#374151' : '#d1d5db' }}>₹{serviceCharge.toFixed(2)}</span>
+            </div>
+            {redeemedPoints > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#dc2626' }}>
+                <span style={{ fontWeight: '500' }}>Loyalty Points Redeemed:</span>
+                <span style={{ fontWeight: '600' }}>-₹{redeemedPoints.toFixed(2)}</span>
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontWeight: '500' }}>Service Charge (Optional):</span>
-              <span style={{ fontWeight: '600', color: '#374151' }}>₹{serviceCharge.toFixed(2)}</span>
-            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: '500' }}>Round off:</span>
               <span style={{ fontWeight: '600', color: '#374151' }}>{roundOff > 0 ? '+' : ''}{roundOff.toFixed(2)}</span>
@@ -1291,21 +1565,11 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
           </div>
 
           <div style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #fee2e2' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button
-                className="btn-pp"
-                style={{ background: discountAmt > 0 ? '#10b981' : 'transparent', color: discountAmt > 0 ? 'white' : '#94161c', border: discountAmt > 0 ? 'none' : '1px solid #94161c', fontSize: '11px', padding: '6px 12px', transition: 'all 0.2s', fontWeight: '600', width: 'fit-content' }}
-                onClick={() => discountAmt > 0 ? setDiscountAmt(0) : setShowDiscountModal(true)}
-              >
-                {discountAmt > 0 ? 'Remove Discount' : 'Custom Discount'}
-              </button>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: 'bold' }}>SPLIT:</span>
-                <button style={{ border: '1px solid #e5e7eb', background: 'white', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => setSplitWays(Math.max(1, splitWays - 1))}>-</button>
-                <span style={{ fontSize: '12px', fontWeight: 'bold', width: '12px', textAlign: 'center' }}>{splitWays}</span>
-                <button style={{ border: '1px solid #e5e7eb', background: 'white', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => setSplitWays(splitWays + 1)}>+</button>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: 'bold' }}>SPLIT:</span>
+              <button style={{ border: '1px solid #e5e7eb', background: 'white', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => setSplitWays(Math.max(1, splitWays - 1))}>-</button>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', width: '12px', textAlign: 'center' }}>{splitWays}</span>
+              <button style={{ border: '1px solid #e5e7eb', background: 'white', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }} onClick={() => setSplitWays(splitWays + 1)}>+</button>
             </div>
             <div style={{ textAlign: 'right' }}>
               <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '600' }}>NET PAYABLE</span>
@@ -1351,59 +1615,77 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
 
       {/* Modifier Modal Overlay */}
       {showModifierModal && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'white', padding: '24px', borderRadius: '8px', width: '300px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ marginBottom: '16px', fontWeight: 'bold' }}>Attributes for {showModifierModal.name}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="animate-fade-in" style={{ background: 'white', padding: '24px', borderRadius: '12px', width: '320px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <h3 style={{ marginBottom: '16px', fontWeight: 'bold', fontSize: '18px', color: '#1f2937' }}>Attributes for {showModifierModal.name}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }} className="no-scrollbar">
               {showModifierModal.modifiers.map(mod => (
                 <button
                   key={mod}
                   onClick={() => addToCart(showModifierModal, mod)}
-                  style={{ padding: '12px', border: '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'left', background: '#f9fafb', cursor: 'pointer' }}
+                  style={{ padding: '14px 16px', border: '1px solid #e5e7eb', borderRadius: '8px', textAlign: 'left', background: '#f9fafb', cursor: 'pointer', fontWeight: '500', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => e.target.style.background = '#f3f4f6'}
+                  onMouseLeave={(e) => e.target.style.background = '#f9fafb'}
                 >
                   {mod}
                 </button>
               ))}
               <button
                 onClick={() => addToCart(showModifierModal, 'Regular')}
-                style={{ padding: '12px', border: '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'left', background: '#f9fafb', cursor: 'pointer' }}
+                style={{ padding: '14px 16px', border: '1px solid #10b981', color: '#10b981', borderRadius: '8px', textAlign: 'left', background: '#ecfdf5', cursor: 'pointer', fontWeight: 'bold' }}
               >
                 Regular (No Mods)
               </button>
             </div>
             <button
               onClick={() => setShowModifierModal(null)}
-              style={{ padding: '8px', marginTop: '16px', width: '100%', border: 'none', background: 'transparent', color: 'red', cursor: 'pointer' }}
+              style={{ padding: '12px', marginTop: '16px', width: '100%', border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer', fontWeight: 'bold' }}
             >
               Cancel
             </button>
           </div>
         </div>
       )}
-      {/* Discount Modal Overlay */}
-      {showDiscountModal && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'white', padding: '24px', borderRadius: '8px', width: '300px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ marginBottom: '16px', fontWeight: 'bold', borderBottom: '1px solid #fee2e2', paddingBottom: '8px', color: '#94161c' }}>Manager Override Required</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-              <input
-                type="number"
-                placeholder="Discount Amount (₹)"
-                value={discountInput}
-                onChange={(e) => setDiscountInput(e.target.value)}
-                style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none' }}
-              />
-              <input
-                type="password"
-                placeholder="Manager PIN (e.g. 9999)"
-                value={managerInput}
-                onChange={(e) => setManagerInput(e.target.value)}
-                style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none' }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={handleApplyDiscount} style={{ flex: 1, padding: '10px', background: '#94161c', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Authenticate</button>
-              <button onClick={() => setShowDiscountModal(false)} style={{ flex: 1, padding: '10px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Cancel</button>
+
+
+
+      {/* Kitchen Note Modal */}
+      {showNoteModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="animate-fade-in" style={{ background: 'white', padding: '24px', borderRadius: '12px', width: '340px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <h3 style={{ marginBottom: '16px', fontWeight: 'bold', fontSize: '18px', color: '#1f2937' }}>Kitchen Instructions</h3>
+            <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px' }}>Add special requests for {showNoteModal.name}</p>
+            <input
+              autoFocus
+              type="text"
+              placeholder="e.g. Extra spicy, No onions..."
+              value={customNoteText}
+              onChange={(e) => setCustomNoteText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setCart(prev => prev.map(i => i.cartItemId === showNoteModal.cartItemId ? { ...i, note: customNoteText } : i));
+                  setShowNoteModal(null);
+                }
+              }}
+              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none', marginBottom: '20px' }}
+            />
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  setCart(prev => prev.map(i => i.cartItemId === showNoteModal.cartItemId ? { ...i, note: '' } : i));
+                  setShowNoteModal(null);
+                }}
+                style={{ flex: 1, padding: '12px', background: 'transparent', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                Clear Note
+              </button>
+              <button
+                onClick={() => {
+                  setCart(prev => prev.map(i => i.cartItemId === showNoteModal.cartItemId ? { ...i, note: customNoteText } : i));
+                  setShowNoteModal(null);
+                }}
+                style={{ flex: 1, padding: '12px', background: '#94161c', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                Save
+              </button>
             </div>
           </div>
         </div>
@@ -1435,8 +1717,11 @@ const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
     const hour = new Date(order.timestamp).getHours();
     const formattedHour = hour % 12 || 12;
     const ampm = hour < 12 ? 'AM' : 'PM';
-    const hourKey = `${formattedHour}:00 ${ampm} - ${formattedHour + 1}:00 ${ampm}`;
-    hoursData[hourKey] = (hoursData[hourKey] || 0) + 1;
+    const labelKey = `${formattedHour}:00 ${ampm} - ${formattedHour + 1}:00 ${ampm}`;
+
+    if (!hoursData[hour]) hoursData[hour] = { hourCode: hour, label: labelKey, orders: 0, revenue: 0 };
+    hoursData[hour].orders += 1;
+    hoursData[hour].revenue += order.grandTotal;
 
     order.cart.forEach(item => {
       // Category 
@@ -1450,7 +1735,12 @@ const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
 
   const topItems = Object.values(itemsMap).sort((a, b) => b.qty - a.qty).slice(0, 5);
   const topCategories = Object.entries(categories).sort((a, b) => b[1] - a[1]);
-  const peakHoursArr = Object.entries(hoursData).sort((a, b) => b[1] - a[1]);
+
+  // Prepare Chart Data
+  const hourlyChartData = Object.values(hoursData).sort((a, b) => a.hourCode - b.hourCode);
+  const paymentChartData = Object.entries(payments).map(([name, value]) => ({ name, value })).filter(d => d.value > 0);
+  const categoryChartData = topCategories.map(([name, value]) => ({ name, value }));
+  const pieColors = { Cash: '#10b981', Card: '#3b82f6', UPI: '#8b5cf6' };
 
   // --- Smart Alerts Logic ---
   const alerts = [];
@@ -1484,7 +1774,7 @@ const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f9fafb' }} className="animate-fade-in no-scrollbar">
       <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <BarChart3 size={20} color="#94161c" /> Business Analytics
+        <BarChart3 size={20} color="#94161c" /> Business Analytics Data Hub
       </h2>
 
       {/* Smart Alerts Banner Area */}
@@ -1524,33 +1814,97 @@ const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-        {/* Payment Split */}
-        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><PieChart size={16} color="#4b5563" /> Payment Split</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {Object.entries(payments).map(([method, amount]) => (
-              <div key={method} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #f3f4f6' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '500', color: '#4b5563' }}>
-                  {method === 'Cash' ? <Banknote size={14} color="#10b981" /> : method === 'Card' ? <CreditCard size={14} color="#3b82f6" /> : <Smartphone size={14} color="#8b5cf6" />}
-                  {method}
-                </span>
-                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>₹{amount.toFixed(2)}</span>
-              </div>
-            ))}
+        {/* Hourly Sales Trend Chart */}
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', gridColumn: '1 / -1' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <TrendingUp size={16} color="#4b5563" /> Hourly Sales Trend
+          </h3>
+          <div style={{ height: '250px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={hourlyChartData}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.5} vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} tickMargin={10} minTickGap={20} />
+                <YAxis yAxisId="left" tick={{ fontSize: 10 }} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} />
+                <RechartsTooltip contentStyle={{ fontSize: '12px', borderRadius: '8px' }} />
+                <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#94161c" strokeWidth={3} name="Revenue (₹)" />
+                <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#3b82f6" strokeWidth={3} name="Orders" />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Peak Hours */}
+        {/* Payment Split Chart */}
         <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={16} color="#4b5563" /> Peak Hour Analysis (Orders)</h3>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><PieChart size={16} color="#4b5563" /> Payment Breakdown</h3>
+          <div style={{ height: '200px', display: 'flex' }}>
+            {paymentChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Pie data={paymentChartData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                    {paymentChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={pieColors[entry.name] || '#9ca3af'} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip formatter={(val) => `₹${val.toFixed(2)}`} />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '13px', fontStyle: 'italic' }}>No Data</div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px', minWidth: '100px' }}>
+              {paymentChartData.map((method) => (
+                <div key={method.name}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '500', color: '#4b5563' }}>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: pieColors[method.name] }} />
+                    {method.name}
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', paddingLeft: '16px' }}>₹{method.value.toFixed(2)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Category Sales Chart */}
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart3 size={16} color="#4b5563" /> Category Demand</h3>
+          <div style={{ height: '200px' }}>
+            {categoryChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryChartData.slice(0, 5)} layout="vertical" margin={{ top: 0, right: 0, left: 40, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.5} />
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={80} />
+                  <RechartsTooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ fontSize: '12px', borderRadius: '8px' }} formatter={(val) => `₹${val.toFixed(2)}`} />
+                  <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={20} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '13px', fontStyle: 'italic' }}>No Data</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+        {/* Top Items Table */}
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><TrendingUp size={16} color="#4b5563" /> Top Selling Items</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {peakHoursArr.slice(0, 5).map(([hour, count]) => (
-              <div key={hour} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #f3f4f6' }}>
-                <span style={{ fontSize: '13px', fontWeight: '500', color: '#4b5563' }}>{hour}</span>
-                <span style={{ fontSize: '14px', fontWeight: 'bold', background: '#fdf2f2', color: '#94161c', padding: '2px 8px', borderRadius: '12px' }}>{count} Orders</span>
+            <div style={{ display: 'flex', fontSize: '11px', fontWeight: 'bold', color: '#9ca3af', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>
+              <span style={{ flex: 1 }}>ITEM</span>
+              <span style={{ width: '40px', textAlign: 'center' }}>QTY</span>
+              <span style={{ width: '60px', textAlign: 'right' }}>REVENUE</span>
+            </div>
+            {topItems.map((item, idx) => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #f3f4f6' }}>
+                <span style={{ flex: 1, fontSize: '13px', fontWeight: '500', color: '#1f2937' }}>{item.name}</span>
+                <span style={{ width: '40px', textAlign: 'center', fontSize: '13px', fontWeight: 'bold', color: '#4b5563', background: '#f3f4f6', borderRadius: '4px', padding: '2px 0' }}>{item.qty}</span>
+                <span style={{ width: '60px', textAlign: 'right', fontSize: '13px', fontWeight: 'bold', color: '#94161c' }}>₹{item.revenue}</span>
               </div>
             ))}
-            {peakHoursArr.length === 0 && <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No orders settled yet.</span>}
+            {topItems.length === 0 && <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No orders settled yet.</span>}
           </div>
         </div>
 
@@ -1569,47 +1923,11 @@ const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
                   <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#1f2937' }}>{log.tableId}</span>
                   <span style={{ fontSize: '10px', color: '#6b7280' }}>{log.time}</span>
                 </div>
-                <span style={{ width: '80px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#374151', background: '#f3f4f6', padding: '2px 4px', borderRadius: '4px' }}>{log.authorizer}</span>
+                <span style={{ width: '80px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#374151', background: '#fef2f2', padding: '2px 4px', borderRadius: '4px' }}>{log.authorizer}</span>
                 <span style={{ width: '60px', textAlign: 'right', fontSize: '13px', fontWeight: 'bold', color: '#94161c' }}>-₹{log.amount}</span>
               </div>
             ))}
-            {discountLogs.length === 0 && <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No overriding discounts have been authenticated today.</span>}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
-        {/* Category Sales */}
-        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart3 size={16} color="#4b5563" /> Category-wise Sales</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {topCategories.slice(0, 5).map(([cat, amount]) => (
-              <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #f3f4f6' }}>
-                <span style={{ fontSize: '13px', fontWeight: '500', color: '#4b5563' }}>{cat}</span>
-                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>₹{amount.toFixed(2)}</span>
-              </div>
-            ))}
-            {topCategories.length === 0 && <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No orders settled yet.</span>}
-          </div>
-        </div>
-
-        {/* Top Items */}
-        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><TrendingUp size={16} color="#4b5563" /> Top Selling Items (Qty & Rev)</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', fontSize: '11px', fontWeight: 'bold', color: '#9ca3af', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>
-              <span style={{ flex: 1 }}>ITEM</span>
-              <span style={{ width: '40px', textAlign: 'center' }}>QTY</span>
-              <span style={{ width: '60px', textAlign: 'right' }}>REVENUE</span>
-            </div>
-            {topItems.map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #f3f4f6' }}>
-                <span style={{ flex: 1, fontSize: '13px', fontWeight: '500', color: '#1f2937' }}>{item.name}</span>
-                <span style={{ width: '40px', textAlign: 'center', fontSize: '13px', fontWeight: 'bold', color: '#4b5563' }}>{item.qty}</span>
-                <span style={{ width: '60px', textAlign: 'right', fontSize: '13px', fontWeight: 'bold', color: '#94161c' }}>₹{item.revenue}</span>
-              </div>
-            ))}
-            {topItems.length === 0 && <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No orders settled yet.</span>}
+            {discountLogs.length === 0 && <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No overriding discounts currently authenticated.</span>}
           </div>
         </div>
       </div>
@@ -1756,78 +2074,101 @@ export default function App() {
   const [view, setView] = useState('tables');
   const [selectedTable, setSelectedTable] = useState(null);
 
-  // PERSISTENCE LOGIC
-  const [tables, setTables] = useState(() => {
-    const saved = localStorage.getItem('pos_tables_v2');
-    return saved ? JSON.parse(saved) : INITIAL_TABLES;
-  });
-
-  const [orderHistory, setOrderHistory] = useState(() => {
-    const saved = localStorage.getItem('pos_order_history');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [nonTableOrders, setNonTableOrders] = useState(() => {
-    const saved = localStorage.getItem('pos_nontable_orders_v2');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [printerSettings, setPrinterSettings] = useState(() => {
-    const saved = localStorage.getItem('pos_printer_settings');
-    return saved ? JSON.parse(saved) : { billHeader: 'TYDE CAFE', billFooter: 'Thank You for Visiting!', categorizedKOT: false, billLayout: 'standard' };
-  });
-
-  const [menuItems, setMenuItems] = useState(() => {
-    const saved = localStorage.getItem('pos_menu_items');
-    const version = localStorage.getItem('pos_menu_version');
-    if (version !== MENU_VERSION) return INITIAL_MENU_ITEMS;
-    return saved ? JSON.parse(saved) : INITIAL_MENU_ITEMS;
-  });
-
-  const [categories, setCategories] = useState(() => {
-    const saved = localStorage.getItem('pos_categories');
-    const version = localStorage.getItem('pos_menu_version');
-    if (version !== MENU_VERSION) return INITIAL_CATEGORIES;
-    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-  });
+  // PERSISTENCE LOGIC (IndexedDB based)
+  const [isDbLoaded, setIsDbLoaded] = useState(false);
+  const [tables, setTables] = useState(INITIAL_TABLES);
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [nonTableOrders, setNonTableOrders] = useState([]);
+  const [printerSettings, setPrinterSettings] = useState({ billHeader: 'TYDE CAFE', billFooter: 'Thank You for Visiting!', categorizedKOT: false, billLayout: 'standard', printFontFamily: 'Helvetica, Arial, sans-serif', printFontSize: '13', printFontWeight: 'normal' });
+  const [menuItems, setMenuItems] = useState(INITIAL_MENU_ITEMS);
+  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
+  const [customers, setCustomers] = useState({});
 
   useEffect(() => {
-    localStorage.setItem('pos_menu_version', MENU_VERSION);
+    const loadFromIDB = async () => {
+      try {
+        const savedTables = await get('pos_tables_v2');
+        if (savedTables) setTables(savedTables);
+
+        const savedOrderHistory = await get('pos_order_history');
+        if (savedOrderHistory) setOrderHistory(savedOrderHistory);
+
+        const savedNonTable = await get('pos_nontable_orders_v2');
+        if (savedNonTable) setNonTableOrders(savedNonTable);
+
+        const savedSettings = await get('pos_printer_settings');
+        if (savedSettings) setPrinterSettings(savedSettings);
+
+        const savedCustomers = await get('pos_customers');
+        if (savedCustomers) setCustomers(savedCustomers);
+
+        const version = await get('pos_menu_version');
+        if (version === MENU_VERSION) {
+          const savedMenuItems = await get('pos_menu_items');
+          if (savedMenuItems) setMenuItems(savedMenuItems);
+
+          const savedCategories = await get('pos_categories');
+          if (savedCategories) setCategories(savedCategories);
+        } else {
+          await set('pos_menu_version', MENU_VERSION);
+          // Resets to new defaults above. Optional: save new defaults immediately.
+        }
+      } catch (err) {
+        console.error("Database load error:", err);
+      } finally {
+        setIsDbLoaded(true);
+      }
+    };
+    loadFromIDB();
   }, []);
 
+  // Save changes automatically after load
   useEffect(() => {
-    localStorage.setItem('pos_tables_v2', JSON.stringify(tables));
-  }, [tables]);
+    if (isDbLoaded) set('pos_customers', customers);
+  }, [customers, isDbLoaded]);
 
   useEffect(() => {
-    localStorage.setItem('pos_order_history', JSON.stringify(orderHistory));
-  }, [orderHistory]);
+    if (isDbLoaded) set('pos_tables_v2', tables);
+  }, [tables, isDbLoaded]);
 
   useEffect(() => {
-    localStorage.setItem('pos_nontable_orders_v2', JSON.stringify(nonTableOrders));
-  }, [nonTableOrders]);
+    if (isDbLoaded) set('pos_order_history', orderHistory);
+  }, [orderHistory, isDbLoaded]);
 
   useEffect(() => {
-    localStorage.setItem('pos_printer_settings', JSON.stringify(printerSettings));
-  }, [printerSettings]);
+    if (isDbLoaded) set('pos_nontable_orders_v2', nonTableOrders);
+  }, [nonTableOrders, isDbLoaded]);
 
   useEffect(() => {
-    localStorage.setItem('pos_menu_items', JSON.stringify(menuItems));
-  }, [menuItems]);
+    if (isDbLoaded) set('pos_printer_settings', printerSettings);
+  }, [printerSettings, isDbLoaded]);
 
   useEffect(() => {
-    localStorage.setItem('pos_categories', JSON.stringify(categories));
-  }, [categories]);
+    if (isDbLoaded) set('pos_menu_items', menuItems);
+  }, [menuItems, isDbLoaded]);
+
+  useEffect(() => {
+    if (isDbLoaded) set('pos_categories', categories);
+  }, [categories, isDbLoaded]);
+
+  if (!isDbLoaded) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
+        <Store size={48} color="#94161c" style={{ marginBottom: '16px', opacity: 0.5 }} className="animate-pulse" />
+        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#374151' }}>Initializing Secure Local Database...</div>
+        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>Optimizing for offline performance</div>
+      </div>
+    );
+  }
+
 
   const clearTableFast = (tableId) => {
-    if (window.confirm('Are you sure you want to clear this table without settling the bill?')) {
-      setTables(prev => prev.map(t => {
-        if (t.id === tableId) {
-          return { ...t, order: [], status: 'blank' };
-        }
-        return t;
-      }));
-    }
+    setTables(prev => prev.map(t => {
+      if (t.id === tableId) {
+        return { ...t, order: [], status: 'blank' };
+      }
+      return t;
+    }));
   };
 
   const handleSelectTable = (table) => {
@@ -1848,6 +2189,25 @@ export default function App() {
     setNonTableOrders(prev => [...prev, newOrder]);
     setSelectedTable(newOrder); // Using selectedTable state for both tables & nontables uniformly
     setView('ordering');
+  };
+
+  const handleSimulateAggregator = () => {
+    const platforms = ['Zomato', 'Swiggy', 'Thrive'];
+    const type = platforms[Math.floor(Math.random() * platforms.length)];
+    const newId = `${type.toUpperCase()}-${Math.floor(Math.random() * 9000) + 1000}`;
+    const newOrder = {
+      id: newId,
+      name: `${newId} (Online)`,
+      status: 'kot',
+      type: type,
+      order: [
+        { ...(menuItems.find(i => i.price > 100) || menuItems[0]), qty: 1, cartItemId: 'agg1', printedQty: 0 },
+        { ...(menuItems.find(i => i.price < 200) || menuItems[1]), qty: 2, cartItemId: 'agg2', printedQty: 0 }
+      ],
+      phone: ''
+    };
+    setNonTableOrders(prev => [...prev, newOrder]);
+    alert(`Incoming automated ${type} order received through Live Sync!`);
   };
 
   const saveOrderToTable = (tableId, orderItems, newStatus) => {
@@ -1878,6 +2238,16 @@ export default function App() {
   };
 
   const settleTable = (tableId, orderDetails) => {
+    if (orderDetails && orderDetails.phone) {
+      setCustomers(prev => {
+        const ph = orderDetails.phone;
+        const existing = prev[ph] || { points: 0, visits: 0, name: orderDetails.customerName || 'Guest' };
+        const earned = Math.floor(orderDetails.grandTotal / 100);
+        const netPoints = existing.points + earned - (orderDetails.redeemedPoints || 0);
+        return { ...prev, [ph]: { ...existing, points: netPoints, visits: existing.visits + 1, name: orderDetails.customerName || existing.name } };
+      });
+    }
+
     if (orderDetails && orderDetails.cart && orderDetails.cart.length > 0) {
       setOrderHistory(prev => [...prev, {
         id: Date.now().toString(),
@@ -1910,7 +2280,7 @@ export default function App() {
 
   return (
     <div className="app-container">
-      <TopHeader onViewChange={setView} />
+      <TopHeader onViewChange={setView} onSimulateAggregator={handleSimulateAggregator} />
 
       <main style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {view === 'tables' && (
@@ -1938,7 +2308,7 @@ export default function App() {
           <OrderHistoryView orderHistory={orderHistory} />
         )}
         {view === 'printersettings' && (
-          <PrinterSettingsView settings={printerSettings} onSaveSettings={setPrinterSettings} />
+          <PrinterSettingsView settings={printerSettings} onSaveSettings={setPrinterSettings} categories={categories} />
         )}
         {view === 'menusetup' && (
           <MenuSetupView
@@ -1952,11 +2322,26 @@ export default function App() {
         {view === 'ordering' && (
           <OrderingSystem
             table={selectedTable}
+            tables={tables}
             initialOrder={selectedTable?.order || []}
             MENU_ITEMS={menuItems}
             CATEGORIES={categories}
+            customers={customers}
+            onChangeTable={(oldId, newId, currentCart) => {
+              if (selectedTable && oldId !== newId) {
+                const targetTable = tables.find(t => t.id === newId);
+                if (targetTable) {
+                  setTables(prev => prev.map(t => {
+                    if (t.id === newId) return { ...t, order: currentCart, status: 'running' };
+                    if (t.id === oldId) return { ...t, order: [], status: 'blank' };
+                    return t;
+                  }));
+                  setSelectedTable({ ...targetTable, order: currentCart, status: 'running' });
+                }
+              }
+            }}
             onBack={() => {
-              if (selectedTable && (String(selectedTable.id).startsWith('DEL-') || String(selectedTable.id).startsWith('TAK-'))) {
+              if (selectedTable && (String(selectedTable.id).startsWith('DEL-') || String(selectedTable.id).startsWith('TAK-') || String(selectedTable.id).startsWith('ZOMATO-') || String(selectedTable.id).startsWith('SWIGGY-') || String(selectedTable.id).startsWith('THRIVE-'))) {
                 setView('nontables');
               } else {
                 setView('tables');
@@ -1967,44 +2352,6 @@ export default function App() {
           />
         )}
       </main>
-
-      {/* Print Overlay - Now connected to actual active order */}
-      <div className="print-only">
-        <div style={{ margin: '0 auto', width: '300px', padding: '20px', fontFamily: 'monospace' }}>
-          <h3 style={{ textAlign: 'center' }}>TYDE CAFE</h3>
-          <p style={{ textAlign: 'center', fontSize: '10px' }}>Tax Invoice</p>
-          <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-            <span>Table: {selectedTable?.name || 'Walk-In'}</span>
-            <span>{new Date().toLocaleTimeString()}</span>
-          </div>
-          <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
-          <div style={{ display: 'flex', borderBottom: '1px solid #000', paddingBottom: '5px' }}>
-            <span style={{ flex: 1 }}>Item</span>
-            <span style={{ width: '40px', textAlign: 'center' }}>Qty</span>
-            <span style={{ width: '60px', textAlign: 'right' }}>Total</span>
-          </div>
-          <div style={{ paddingTop: '10px' }}>
-            {selectedTable?.order?.map(item => (
-              <div style={{ display: 'flex', marginBottom: '4px' }} key={item.cartItemId}>
-                <span style={{ flex: 1, fontSize: '11px' }}>{item.name}</span>
-                <span style={{ width: '40px', textAlign: 'center', fontSize: '11px' }}>{item.qty}</span>
-                <span style={{ width: '60px', textAlign: 'right', fontSize: '11px' }}>{item.price * item.qty}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ borderBottom: '1px dashed #000', margin: '20px 0 10px' }}></div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '11px', marginBottom: '4px' }}>
-            <span style={{ marginRight: '20px' }}>GST (5%):</span>
-            <span>Included</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '10px' }}>
-            <span>GRAND TOTAL</span>
-            <span>₹{selectedTable?.order?.reduce((acc, i) => acc + (i.price * i.qty), 0)}</span>
-          </div>
-          <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '10px' }}>Thank You for Visiting!</p>
-        </div>
-      </div>
     </div>
   );
 }
