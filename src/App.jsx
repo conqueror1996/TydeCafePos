@@ -231,9 +231,7 @@ const MenuSetupView = ({ categories, setCategories, menuItems, setMenuItems }) =
   };
 
   const deleteCategory = (cat) => {
-    if (confirm(`Are you sure you want to delete category "${cat}"? This won't delete the items in it, but they may become orphaned.`)) {
-      setCategories(categories.filter(c => c !== cat));
-    }
+    alert("Data removal is strictly disabled! Contact Administrator.");
   };
 
   const addItem = () => {
@@ -252,9 +250,7 @@ const MenuSetupView = ({ categories, setCategories, menuItems, setMenuItems }) =
   };
 
   const deleteItem = (id) => {
-    if (confirm("Are you sure you want to delete this menu item?")) {
-      setMenuItems(menuItems.filter(item => item.id !== id));
-    }
+    alert("Data removal is strictly disabled! Contact Administrator.");
   };
 
   const toggleStock = (id) => {
@@ -379,14 +375,7 @@ const FloorPlanSetupView = ({ tables, setTables }) => {
   };
 
   const removeTable = (id) => {
-    const table = tables.find(t => t.id === id);
-    if (table && table.status !== 'blank') {
-      alert("Cannot remove a table that has an active order. Settle or clear it first.");
-      return;
-    }
-    if (confirm("Are you sure you want to remove this table?")) {
-      setTables(tables.filter(t => t.id !== id));
-    }
+    alert("Data removal is strictly disabled! Contact Administrator.");
   };
 
   return (
@@ -534,13 +523,7 @@ const TableManagement = ({ tables, onSelectTable, onClearTable }) => {
                     <div style={{ display: 'flex', gap: '10px', marginTop: '10px', alignItems: 'center' }}>
                       <Printer size={14} color="#6b7280" />
                       {(table.status === 'kot' || table.status === 'printed') && <Eye size={14} color="#6b7280" />}
-                      {/* CLEAR TABLE FAST ACTION */}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onClearTable(table.id); }}
-                        style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '10px', padding: '2px 6px', cursor: 'pointer', color: '#374151' }}
-                      >
-                        Clear
-                      </button>
+                      {/* CLEAR TABLE FAST ACTION REMOVED TO PREVENT DATA LOSS */}
                     </div>
                   )}
                   {tableTotal > 0 && (
@@ -644,9 +627,17 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder }) => {
 /* --- DIRECT ESC/POS PRINTING HARDWARE ENGINE --- */
 // Connects bypassing Browser Dialog directly to USB/Serial EPSON/STAR format POS Thermal hardware
 const printPosToSerial = async (orderData, type = 'BILL') => {
+  let settings = { billHeader: 'TYDE CAFE', billFooter: 'Thank You for Visiting!', categorizedKOT: false, billLayout: 'standard' };
   try {
-    const settings = JSON.parse(localStorage.getItem('pos_printer_settings') || '{"billHeader":"TYDE CAFE","billFooter":"Thank You for Visiting!","categorizedKOT":false,"billLayout":"standard"}');
+    const rawSettings = localStorage.getItem('pos_printer_settings');
+    if (rawSettings && rawSettings !== "undefined") {
+      settings = JSON.parse(rawSettings);
+    }
+  } catch (e) {
+    console.error("Failed to parse printer settings", e);
+  }
 
+  try {
     if (!('serial' in navigator)) throw new Error('Web Serial API not supported.');
     const port = await navigator.serial.requestPort();
     await port.open({ baudRate: 9600 });
@@ -1100,26 +1091,52 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
   };
 
   const handleAction = async (actionType) => {
-    const newStatus = actionType.includes('KOT') ? 'kot' : actionType.includes('Print') ? 'printed' : 'running';
+    let updatedCart = [...cart];
+    let itemsToPrint = [];
+
+    const isKOT = actionType.includes('KOT');
+    const isPrint = actionType.includes('Print');
+    const isBill = actionType === 'Print Bill' || actionType.includes('Bill');
+    const newStatus = isKOT ? 'kot' : isPrint ? 'printed' : 'running';
+
+    if (isKOT) {
+      updatedCart = cart.map(item => {
+        const prevPrintedQty = item.printedQty || 0;
+        const newQty = item.qty - prevPrintedQty;
+        if (newQty > 0) {
+          itemsToPrint.push({ ...item, qty: newQty });
+          return { ...item, printedQty: item.qty };
+        }
+        return item;
+      });
+
+      if (isPrint && !isBill && itemsToPrint.length === 0) {
+        alert("No new items to print for KOT.");
+        return;
+      }
+    } else if (isBill) {
+      itemsToPrint = cart;
+    }
 
     if (isPaid && actionType.includes('Save')) {
       // Settle and clear table with full analytics data
-      onSettleTable(table.id, { cart, subtotal, discountAmt, discountAuth, taxes: 0, grandTotal, paymentMethod, timestamp: new Date().toISOString() });
+      onSettleTable(table.id, { cart: updatedCart, subtotal, discountAmt, discountAuth, taxes: 0, grandTotal, paymentMethod, timestamp: new Date().toISOString() });
     } else {
       // Just save order state
-      onSaveOrder(table.id, cart, newStatus);
+      setCart(updatedCart); // update local state so diff tracking is consistent
+      onSaveOrder(table.id, updatedCart, newStatus);
     }
 
-    if (actionType.includes('Print')) {
+    if (isPrint) {
       await printPosToSerial({
         tableName: table?.name || 'Walk-In',
-        items: cart,
+        items: itemsToPrint,
         subtotal: subtotal,
         serviceCharge: serviceCharge,
         roundOff: roundOff,
         grandTotal: grandTotal,
         orderType: table?.type === 'Delivery' ? 'Delivery' : table?.type === 'Takeaway' ? 'Pick Up' : 'Dine In'
-      }, actionType === 'Print Bill' || actionType.includes('Bill') ? 'BILL' : 'KOT');
+      }, isBill ? 'BILL' : 'KOT');
     }
   };
 
@@ -1801,12 +1818,7 @@ export default function App() {
   }, [categories]);
 
   const clearTableFast = (tableId) => {
-    setTables(prev => prev.map(t => {
-      if (t.id === tableId) {
-        return { ...t, order: [], status: 'blank' };
-      }
-      return t;
-    }));
+    alert("Clearing tables without settling is strictly disabled!");
   };
 
   const handleSelectTable = (table) => {
@@ -1905,9 +1917,7 @@ export default function App() {
           <DayCloseWizard
             orderHistory={orderHistory}
             onCompleteDayClose={() => {
-              setTables(INITIAL_TABLES);
-              setNonTableOrders([]);
-              setOrderHistory([]);
+              alert("Day Close data wipe is strictly disabled! History and active orders will not be removed.");
               setView('tables');
             }}
           />
