@@ -7,100 +7,102 @@ import {
 import './index.css';
 
 // --- INITIAL MOCK DATA ---
+const MENU_VERSION = '1';
+
 const INITIAL_CATEGORIES = [
-  "Quick Snack's", "Bread's", "Burger's", "Pizza's", "Wrap's", "Pasta's",
-  "Hot Beverage's", "Cold Beverage's", "Moktails", "Salad's", "Desert"
+  "Quick Snacks", "Breads", "Burgers", "Pizzas", "Wraps", "Pastas",
+  "Hot Beverages", "Cold Beverages", "Mocktails", "Salads", "Desserts"
 ];
 
 const INITIAL_MENU_ITEMS = [
-  // Quick Snack's
-  { id: 101, name: 'Salted Fries', price: 199, type: 'veg', cat: "Quick Snack's", inStock: true },
-  { id: 102, name: 'Peri Peri Fries', price: 229, type: 'veg', cat: "Quick Snack's", inStock: true },
-  { id: 103, name: 'Cheesy Fries', price: 249, type: 'veg', cat: "Quick Snack's", inStock: true },
-  { id: 104, name: 'Mozzarella Sticks', price: 249, type: 'veg', cat: "Quick Snack's", inStock: true },
-  { id: 105, name: 'Veg Fingers', price: 249, type: 'veg', cat: "Quick Snack's", inStock: true },
-  { id: 106, name: 'Chicken Popcorn', price: 349, type: 'non-veg', cat: "Quick Snack's", inStock: true },
-  { id: 107, name: 'Chicken Strips(8pc)', price: 399, type: 'non-veg', cat: "Quick Snack's", inStock: true },
-  { id: 108, name: 'Chicken Nuggets(8pc)', price: 339, type: 'non-veg', cat: "Quick Snack's", inStock: true },
-  { id: 109, name: 'Chicken Lolipop', price: 409, type: 'non-veg', cat: "Quick Snack's", inStock: true },
+  // Quick Snacks
+  { id: 101, name: 'Salted Fries', price: 199, type: 'veg', cat: "Quick Snacks", inStock: true },
+  { id: 102, name: 'Peri Peri Fries', price: 229, type: 'veg', cat: "Quick Snacks", inStock: true },
+  { id: 103, name: 'Cheesy Fries', price: 249, type: 'veg', cat: "Quick Snacks", inStock: true },
+  { id: 104, name: 'Mozzarella Sticks', price: 249, type: 'veg', cat: "Quick Snacks", inStock: true },
+  { id: 105, name: 'Veg Fingers', price: 249, type: 'veg', cat: "Quick Snacks", inStock: true },
+  { id: 106, name: 'Chicken Popcorn', price: 349, type: 'non-veg', cat: "Quick Snacks", inStock: true },
+  { id: 107, name: 'Chicken Strips (8pc)', price: 399, type: 'non-veg', cat: "Quick Snacks", inStock: true },
+  { id: 108, name: 'Chicken Nuggets (8pc)', price: 339, type: 'non-veg', cat: "Quick Snacks", inStock: true },
+  { id: 109, name: 'Chicken Lolipop', price: 409, type: 'non-veg', cat: "Quick Snacks", inStock: true },
 
-  // Bread's
-  { id: 201, name: 'Cheese Garlic Bread', price: 249, type: 'veg', cat: "Bread's", inStock: true },
-  { id: 202, name: 'Sweet Corn Garlic Bread', price: 269, type: 'veg', cat: "Bread's", inStock: true },
-  { id: 203, name: 'Spicy Garlic Bread', price: 279, type: 'veg', cat: "Bread's", inStock: true },
-  { id: 204, name: 'Bruschetta Garlic Bread', price: 299, type: 'veg', cat: "Bread's", inStock: true },
+  // Breads
+  { id: 201, name: 'Cheese Garlic Bread', price: 249, type: 'veg', cat: "Breads", inStock: true },
+  { id: 202, name: 'Sweet Corn Garlic Bread', price: 269, type: 'veg', cat: "Breads", inStock: true },
+  { id: 203, name: 'Spicy Garlic Bread', price: 279, type: 'veg', cat: "Breads", inStock: true },
+  { id: 204, name: 'Bruschetta Garlic Bread', price: 299, type: 'veg', cat: "Breads", inStock: true },
 
-  // Burger's
-  { id: 301, name: 'Veg Classic', price: 239, type: 'veg', cat: "Burger's", inStock: true },
-  { id: 302, name: 'Veg Panner Crispy', price: 259, type: 'veg', cat: "Burger's", inStock: true },
-  { id: 303, name: 'Chicken Classic', price: 259, type: 'non-veg', cat: "Burger's", inStock: true },
-  { id: 304, name: 'Chicken Crispy', price: 289, type: 'non-veg', cat: "Burger's", inStock: true },
+  // Burgers
+  { id: 301, name: 'Veg Classic', price: 239, type: 'veg', cat: "Burgers", inStock: true },
+  { id: 302, name: 'Veg Panner Crispy', price: 259, type: 'veg', cat: "Burgers", inStock: true },
+  { id: 303, name: 'Chicken Classic', price: 259, type: 'non-veg', cat: "Burgers", inStock: true },
+  { id: 304, name: 'Chicken Crispy', price: 289, type: 'non-veg', cat: "Burgers", inStock: true },
 
-  // Pizza's
-  { id: 401, name: 'Margarita', price: 399, type: 'veg', cat: "Pizza's", inStock: true },
-  { id: 402, name: 'Simply Veggie', price: 419, type: 'veg', cat: "Pizza's", inStock: true },
-  { id: 403, name: 'Farm Veggies', price: 429, type: 'veg', cat: "Pizza's", inStock: true },
-  { id: 404, name: 'peri Peri Panner', price: 459, type: 'veg', cat: "Pizza's", inStock: true },
-  { id: 405, name: 'Tandoori Paneer', price: 499, type: 'veg', cat: "Pizza's", inStock: true },
-  { id: 406, name: 'Veg Extravaganza', price: 559, type: 'veg', cat: "Pizza's", inStock: true },
-  { id: 407, name: 'Chicken Sausages', price: 399, type: 'non-veg', cat: "Pizza's", inStock: true },
-  { id: 408, name: 'Simply Chicken', price: 429, type: 'non-veg', cat: "Pizza's", inStock: true },
-  { id: 409, name: 'BBQ Chicken', price: 449, type: 'non-veg', cat: "Pizza's", inStock: true },
-  { id: 410, name: 'Peri Peri Chicken', price: 469, type: 'non-veg', cat: "Pizza's", inStock: true },
-  { id: 411, name: 'Tandoori Chicken', price: 489, type: 'non-veg', cat: "Pizza's", inStock: true },
-  { id: 412, name: 'Chicken Loaded', price: 559, type: 'non-veg', cat: "Pizza's", inStock: true },
+  // Pizzas
+  { id: 401, name: 'Margarita', price: 399, type: 'veg', cat: "Pizzas", inStock: true },
+  { id: 402, name: 'Simply Veggie', price: 419, type: 'veg', cat: "Pizzas", inStock: true },
+  { id: 403, name: 'Farm Veggies', price: 429, type: 'veg', cat: "Pizzas", inStock: true },
+  { id: 404, name: 'Peri Peri Panner', price: 459, type: 'veg', cat: "Pizzas", inStock: true },
+  { id: 405, name: 'Tandoori Paneer', price: 499, type: 'veg', cat: "Pizzas", inStock: true },
+  { id: 406, name: 'Veg Extravaganza', price: 559, type: 'veg', cat: "Pizzas", inStock: true },
+  { id: 407, name: 'Chicken Sausages', price: 399, type: 'non-veg', cat: "Pizzas", inStock: true },
+  { id: 408, name: 'Simply Chicken', price: 429, type: 'non-veg', cat: "Pizzas", inStock: true },
+  { id: 409, name: 'BBQ Chicken', price: 449, type: 'non-veg', cat: "Pizzas", inStock: true },
+  { id: 410, name: 'Peri Peri Chicken', price: 469, type: 'non-veg', cat: "Pizzas", inStock: true },
+  { id: 411, name: 'Tandoori Chicken', price: 489, type: 'non-veg', cat: "Pizzas", inStock: true },
+  { id: 412, name: 'Chicken Loaded', price: 559, type: 'non-veg', cat: "Pizzas", inStock: true },
 
-  // Wrap's
-  { id: 501, name: 'Veggie delight', price: 299, type: 'veg', cat: "Wrap's", inStock: true },
-  { id: 502, name: 'Panner Warp', price: 319, type: 'veg', cat: "Wrap's", inStock: true },
-  { id: 503, name: 'Tandoori Panner Wrap', price: 349, type: 'veg', cat: "Wrap's", inStock: true },
-  { id: 504, name: 'Chicken Delight', price: 389, type: 'non-veg', cat: "Wrap's", inStock: true },
-  { id: 505, name: 'Chicken Loaded', price: 399, type: 'non-veg', cat: "Wrap's", inStock: true },
+  // Wraps
+  { id: 501, name: 'Veggie delight', price: 299, type: 'veg', cat: "Wraps", inStock: true },
+  { id: 502, name: 'Panner Warp', price: 319, type: 'veg', cat: "Wraps", inStock: true },
+  { id: 503, name: 'Tandoori Panner Wrap', price: 349, type: 'veg', cat: "Wraps", inStock: true },
+  { id: 504, name: 'Chicken Delight', price: 389, type: 'non-veg', cat: "Wraps", inStock: true },
+  { id: 505, name: 'Chicken Loaded', price: 399, type: 'non-veg', cat: "Wraps", inStock: true },
 
-  // Pasta's
-  { id: 601, name: 'Alfredo (White Sauce) Veg', price: 389, type: 'veg', cat: "Pasta's", inStock: true },
-  { id: 602, name: 'Alfredo (White Sauce) Nonveg', price: 399, type: 'non-veg', cat: "Pasta's", inStock: true },
-  { id: 603, name: 'Arrabiata (Red Sauce) Veg', price: 399, type: 'veg', cat: "Pasta's", inStock: true },
-  { id: 604, name: 'Arrabiata (Red Sauce) Nonveg', price: 419, type: 'non-veg', cat: "Pasta's", inStock: true },
-  { id: 605, name: 'Pink Sauce Veg', price: 439, type: 'veg', cat: "Pasta's", inStock: true },
-  { id: 606, name: 'Pink Sauce Nonveg', price: 459, type: 'non-veg', cat: "Pasta's", inStock: true },
+  // Pastas
+  { id: 601, name: 'Alfredo (White Sauce) Veg', price: 389, type: 'veg', cat: "Pastas", inStock: true },
+  { id: 602, name: 'Alfredo (White Sauce) Nonveg', price: 399, type: 'non-veg', cat: "Pastas", inStock: true },
+  { id: 603, name: 'Arrabiata (Red Sauce) Veg', price: 399, type: 'veg', cat: "Pastas", inStock: true },
+  { id: 604, name: 'Arrabiata (Red Sauce) Nonveg', price: 419, type: 'non-veg', cat: "Pastas", inStock: true },
+  { id: 605, name: 'Pink Sauce Veg', price: 439, type: 'veg', cat: "Pastas", inStock: true },
+  { id: 606, name: 'Pink Sauce Nonveg', price: 459, type: 'non-veg', cat: "Pastas", inStock: true },
 
-  // Hot Beverage's
-  { id: 701, name: 'Garam Chai', price: 99, type: 'veg', cat: "Hot Beverage's", inStock: true },
-  { id: 702, name: 'Regular Hot Coffee', price: 119, type: 'veg', cat: "Hot Beverage's", inStock: true },
-  { id: 703, name: 'Hot Turmeric Tea', price: 119, type: 'veg', cat: "Hot Beverage's", inStock: true },
-  { id: 704, name: 'Lemon Tea', price: 99, type: 'veg', cat: "Hot Beverage's", inStock: true },
-  { id: 705, name: 'Black Coffee', price: 99, type: 'veg', cat: "Hot Beverage's", inStock: true },
-  { id: 706, name: 'Green Tea', price: 99, type: 'veg', cat: "Hot Beverage's", inStock: true },
-  { id: 707, name: 'Strawberry Green Tea', price: 109, type: 'veg', cat: "Hot Beverage's", inStock: true },
-  { id: 708, name: 'Butterfly Tea', price: 119, type: 'veg', cat: "Hot Beverage's", inStock: true },
+  // Hot Beverages
+  { id: 701, name: 'Garam Chai', price: 99, type: 'veg', cat: "Hot Beverages", inStock: true },
+  { id: 702, name: 'Regular Hot Coffee', price: 119, type: 'veg', cat: "Hot Beverages", inStock: true },
+  { id: 703, name: 'Hot Turmeric Tea', price: 119, type: 'veg', cat: "Hot Beverages", inStock: true },
+  { id: 704, name: 'Lemon Tea', price: 99, type: 'veg', cat: "Hot Beverages", inStock: true },
+  { id: 705, name: 'Black Coffee', price: 99, type: 'veg', cat: "Hot Beverages", inStock: true },
+  { id: 706, name: 'Green Tea', price: 99, type: 'veg', cat: "Hot Beverages", inStock: true },
+  { id: 707, name: 'Strawberry Green Tea', price: 109, type: 'veg', cat: "Hot Beverages", inStock: true },
+  { id: 708, name: 'Butterfly Tea', price: 119, type: 'veg', cat: "Hot Beverages", inStock: true },
 
-  // Cold Beverage's
-  { id: 801, name: 'Cold Coffee', price: 199, type: 'veg', cat: "Cold Beverage's", inStock: true },
-  { id: 802, name: 'Caramel Cold Coffee', price: 219, type: 'veg', cat: "Cold Beverage's", inStock: true },
-  { id: 803, name: 'Lemon Ice Tea', price: 229, type: 'veg', cat: "Cold Beverage's", inStock: true },
-  { id: 804, name: 'Peach Ice tea', price: 209, type: 'veg', cat: "Cold Beverage's", inStock: true },
-  { id: 805, name: 'Vanilla Milkshake', price: 219, type: 'veg', cat: "Cold Beverage's", inStock: true },
-  { id: 806, name: 'Strawberry Milkshake', price: 219, type: 'veg', cat: "Cold Beverage's", inStock: true },
-  { id: 807, name: 'Cookie Delite Milkshake', price: 229, type: 'veg', cat: "Cold Beverage's", inStock: true },
-  { id: 808, name: 'Seasonal Fruit Juice', price: 249, type: 'veg', cat: "Cold Beverage's", inStock: true },
-  { id: 809, name: 'Protein Cold Coffee', price: 299, type: 'veg', cat: "Cold Beverage's", inStock: true },
-  { id: 810, name: 'Protein Chocolate Shake', price: 299, type: 'veg', cat: "Cold Beverage's", inStock: true },
+  // Cold Beverages
+  { id: 801, name: 'Cold Coffee', price: 199, type: 'veg', cat: "Cold Beverages", inStock: true },
+  { id: 802, name: 'Caramel Cold Coffee', price: 219, type: 'veg', cat: "Cold Beverages", inStock: true },
+  { id: 803, name: 'Lemon Ice Tea', price: 229, type: 'veg', cat: "Cold Beverages", inStock: true },
+  { id: 804, name: 'Peach Ice tea', price: 209, type: 'veg', cat: "Cold Beverages", inStock: true },
+  { id: 805, name: 'Vanilla Milkshake', price: 219, type: 'veg', cat: "Cold Beverages", inStock: true },
+  { id: 806, name: 'Strawberry Milkshake', price: 219, type: 'veg', cat: "Cold Beverages", inStock: true },
+  { id: 807, name: 'Cookie Delite Milkshake', price: 229, type: 'veg', cat: "Cold Beverages", inStock: true },
+  { id: 808, name: 'Seasonal Fruit Juice', price: 249, type: 'veg', cat: "Cold Beverages", inStock: true },
+  { id: 809, name: 'Protein Cold Coffee', price: 299, type: 'veg', cat: "Cold Beverages", inStock: true },
+  { id: 810, name: 'Protein Chocolate Shake', price: 299, type: 'veg', cat: "Cold Beverages", inStock: true },
 
-  // Moktails
-  { id: 901, name: 'Mint Mojito', price: 249, type: 'veg', cat: 'Moktails', inStock: true },
-  { id: 902, name: 'Chili Guava', price: 259, type: 'veg', cat: 'Moktails', inStock: true },
-  { id: 903, name: 'Minty Peach', price: 259, type: 'veg', cat: 'Moktails', inStock: true },
-  { id: 904, name: 'Minty Watermelon', price: 259, type: 'veg', cat: 'Moktails', inStock: true },
+  // Mocktails
+  { id: 901, name: 'Mint Mojito', price: 249, type: 'veg', cat: 'Mocktails', inStock: true },
+  { id: 902, name: 'Chili Guava', price: 259, type: 'veg', cat: 'Mocktails', inStock: true },
+  { id: 903, name: 'Minty Peach', price: 259, type: 'veg', cat: 'Mocktails', inStock: true },
+  { id: 904, name: 'Minty Watermelon', price: 259, type: 'veg', cat: 'Mocktails', inStock: true },
 
-  // Salad's
-  { id: 1001, name: 'Paneer Peri Peri Salad', price: 309, type: 'veg', cat: "Salad's", inStock: true },
-  { id: 1002, name: 'Tandoori Chicken Salad', price: 369, type: 'non-veg', cat: "Salad's", inStock: true },
-  { id: 1003, name: 'Extra Chicken Salad', price: 399, type: 'non-veg', cat: "Salad's", inStock: true },
+  // Salads
+  { id: 1001, name: 'Paneer Peri Peri Salad', price: 309, type: 'veg', cat: "Salads", inStock: true },
+  { id: 1002, name: 'Tandoori Chicken Salad', price: 369, type: 'non-veg', cat: "Salads", inStock: true },
+  { id: 1003, name: 'Extra Chicken Salad', price: 399, type: 'non-veg', cat: "Salads", inStock: true },
 
-  // Desert
-  { id: 1100, name: 'Hot Chocolate', price: 289, type: 'veg', cat: 'Desert', inStock: true },
-  { id: 1101, name: 'Choclate with Brownie', price: 299, type: 'veg', cat: 'Desert', inStock: true },
+  // Desserts
+  { id: 1100, name: 'Hot Chocolate', price: 289, type: 'veg', cat: 'Desserts', inStock: true },
+  { id: 1101, name: 'Chocolate with Brownie', price: 299, type: 'veg', cat: 'Desserts', inStock: true },
 ];
 
 const INITIAL_TABLES = [
@@ -1758,13 +1760,21 @@ export default function App() {
 
   const [menuItems, setMenuItems] = useState(() => {
     const saved = localStorage.getItem('pos_menu_items');
+    const version = localStorage.getItem('pos_menu_version');
+    if (version !== MENU_VERSION) return INITIAL_MENU_ITEMS;
     return saved ? JSON.parse(saved) : INITIAL_MENU_ITEMS;
   });
 
   const [categories, setCategories] = useState(() => {
     const saved = localStorage.getItem('pos_categories');
+    const version = localStorage.getItem('pos_menu_version');
+    if (version !== MENU_VERSION) return INITIAL_CATEGORIES;
     return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
   });
+
+  useEffect(() => {
+    localStorage.setItem('pos_menu_version', MENU_VERSION);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('pos_tables_v2', JSON.stringify(tables));
