@@ -523,7 +523,9 @@ const TableManagement = ({ tables, onSelectTable, onClearTable }) => {
                     <div style={{ display: 'flex', gap: '10px', marginTop: '10px', alignItems: 'center' }}>
                       <Printer size={14} color="#6b7280" />
                       {(table.status === 'kot' || table.status === 'printed') && <Eye size={14} color="#6b7280" />}
-                      {/* CLEAR TABLE FAST ACTION REMOVED TO PREVENT DATA LOSS */}
+                      <div onClick={(e) => { e.stopPropagation(); onClearTable(table.id); }} style={{ padding: '4px', background: '#fee2e2', borderRadius: '4px', cursor: 'pointer', display: 'flex', marginLeft: 'auto' }}>
+                        <Trash2 size={14} color="#dc2626" />
+                      </div>
                     </div>
                   )}
                   {tableTotal > 0 && (
@@ -1818,7 +1820,14 @@ export default function App() {
   }, [categories]);
 
   const clearTableFast = (tableId) => {
-    alert("Clearing tables without settling is strictly disabled!");
+    if (window.confirm('Are you sure you want to clear this table without settling the bill?')) {
+      setTables(prev => prev.map(t => {
+        if (t.id === tableId) {
+          return { ...t, order: [], status: 'blank' };
+        }
+        return t;
+      }));
+    }
   };
 
   const handleSelectTable = (table) => {
