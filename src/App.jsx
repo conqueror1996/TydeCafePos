@@ -7,12 +7,12 @@ import {
 import './index.css';
 
 // --- INITIAL MOCK DATA ---
-const CATEGORIES = [
+const INITIAL_CATEGORIES = [
   'Quick Snacks', 'Instant Noodles', 'Breads', 'Pizzas', 'Burgers', 'Wraps',
   'Pastas', 'Momos', 'Hot Beverages', 'Cold Beverages', 'Moktails', 'Dessert'
 ];
 
-const MENU_ITEMS = [
+const INITIAL_MENU_ITEMS = [
   { id: 1, name: 'Cheesy Fries', price: 140, type: 'veg', cat: 'Quick Snacks', inStock: true, modifiers: ['Extra Cheese (+₹30)', 'Spicy'] },
   { id: 2, name: 'Chicken Lollipop', price: 210, type: 'non-veg', cat: 'Quick Snacks', inStock: true },
   { id: 3, name: 'Chicken Nuggets', price: 180, type: 'non-veg', cat: 'Quick Snacks', inStock: true },
@@ -22,7 +22,6 @@ const MENU_ITEMS = [
   { id: 7, name: 'Peri Peri Fries', price: 120, type: 'veg', cat: 'Quick Snacks', inStock: true },
   { id: 8, name: 'Salted Fries', price: 100, type: 'veg', cat: 'Quick Snacks', inStock: true },
   { id: 9, name: 'Veg Fingers', price: 110, type: 'veg', cat: 'Quick Snacks', inStock: true },
-  // Adding more for variety
   { id: 101, name: 'Margherita Pizza', price: 250, type: 'veg', cat: 'Pizzas', inStock: true, modifiers: ['Thin Crust', 'Cheese Burst (+₹50)'] },
   { id: 102, name: 'Cold Coffee', price: 150, type: 'veg', cat: 'Cold Beverages', inStock: true }
 ];
@@ -46,10 +45,21 @@ const TAX_RATE = 0.05; // 5% GST (2.5% CGST + 2.5% SGST)
 // --- COMPONENTS ---
 
 const TopHeader = ({ onViewChange }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="pos-header no-print">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '180px' }}>
-        <Menu size={20} color="#374151" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '180px', position: 'relative' }}>
+        <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <Menu size={20} color="#374151" />
+        </button>
+        {menuOpen && (
+          <div style={{ position: 'absolute', top: '30px', left: '0', background: 'white', border: '1px solid #e5e7eb', borderRadius: '4px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', zIndex: 100, width: '180px' }}>
+            <button onClick={() => { setMenuOpen(false); onViewChange('menusetup'); }} style={{ display: 'block', width: '100%', padding: '10px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', color: '#10b981', fontWeight: 'bold', fontSize: '14px' }}>Menu Setup</button>
+            <button onClick={() => { setMenuOpen(false); onViewChange('floorplan'); }} style={{ display: 'block', width: '100%', padding: '10px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', color: '#8b5cf6', fontWeight: 'bold', fontSize: '14px' }}>Floor Plan</button>
+            <button onClick={() => { setMenuOpen(false); onViewChange('orderhistory'); }} style={{ display: 'block', width: '100%', padding: '10px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', color: '#374151', fontSize: '14px' }}>Order History</button>
+            <button onClick={() => { setMenuOpen(false); onViewChange('printersettings'); }} style={{ display: 'block', width: '100%', padding: '10px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', color: '#374151', fontSize: '14px' }}>Printer Settings</button>
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <div style={{ background: '#94161c', color: 'white', padding: '4px 6px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>TYDE</div>
           <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1f2937' }}>CAFE</div>
@@ -95,7 +105,319 @@ const TopHeader = ({ onViewChange }) => {
   );
 };
 
-const TableManagement = ({ tables, onSelectTable }) => {
+/* --- ORDER HISTORY VIEW --- */
+const OrderHistoryView = ({ orderHistory }) => {
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f9fafb' }} className="animate-fade-in no-scrollbar">
+      <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#1f2937' }}>Order History</h2>
+      {orderHistory.length === 0 ? (
+        <p style={{ color: '#6b7280' }}>No orders settled yet.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {orderHistory.slice().reverse().map((order) => (
+            <div key={order.id} style={{ background: 'white', padding: '16px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #f3f4f6', paddingBottom: '8px' }}>
+                <div>
+                  <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937', marginRight: '12px' }}>Table/Order: {order.tableId}</span>
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>{new Date(order.timestamp).toLocaleString()}</span>
+                </div>
+                <div style={{ fontWeight: 'bold', color: '#94161c', fontSize: '16px' }}>₹{order.grandTotal.toFixed(2)}</div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                <div style={{ color: '#4b5563' }}>
+                  {order.cart.map(item => `${item.qty}x ${item.name}`).join(', ')}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                  <span style={{ background: '#f5f3ff', color: '#5b21b6', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>{order.paymentMethod}</span>
+                  {order.discountAmt > 0 && <span style={{ color: '#10b981', fontSize: '11px', fontWeight: 'bold' }}>Discount: ₹{order.discountAmt}</span>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* --- MENU SETUP VIEW --- */
+const MenuSetupView = ({ categories, setCategories, menuItems, setMenuItems }) => {
+  const [newCat, setNewCat] = useState('');
+  const [newItem, setNewItem] = useState({ name: '', price: '', type: 'veg', cat: categories[0] || '' });
+
+  const addCategory = () => {
+    if (newCat && !categories.includes(newCat)) {
+      setCategories([...categories, newCat]);
+      if (!newItem.cat) setNewItem({ ...newItem, cat: newCat });
+      setNewCat('');
+    }
+  };
+
+  const deleteCategory = (cat) => {
+    if (confirm(`Are you sure you want to delete category "${cat}"? This won't delete the items in it, but they may become orphaned.`)) {
+      setCategories(categories.filter(c => c !== cat));
+    }
+  };
+
+  const addItem = () => {
+    if (newItem.name && newItem.price && newItem.cat) {
+      const itemToAdd = {
+        ...newItem,
+        id: Date.now(),
+        price: parseFloat(newItem.price),
+        inStock: true
+      };
+      setMenuItems([...menuItems, itemToAdd]);
+      setNewItem({ name: '', price: '', type: 'veg', cat: categories[0] || '' });
+    } else {
+      alert("Please fill in Name, Price, and Category.");
+    }
+  };
+
+  const deleteItem = (id) => {
+    if (confirm("Are you sure you want to delete this menu item?")) {
+      setMenuItems(menuItems.filter(item => item.id !== id));
+    }
+  };
+
+  const toggleStock = (id) => {
+    setMenuItems(menuItems.map(item => item.id === id ? { ...item, inStock: !item.inStock } : item));
+  };
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f9fafb' }} className="animate-fade-in no-scrollbar">
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Utensils size={28} color="#10b981" /> Menu & Inventory Setup
+        </h2>
+
+        {/* Categories Section */}
+        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '24px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#374151' }}>Categories</h3>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+            <input
+              type="text"
+              placeholder="New Category Name (e.g. Desserts)"
+              value={newCat}
+              onChange={e => setNewCat(e.target.value)}
+              style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }}
+            />
+            <button onClick={addCategory} className="btn-pp btn-pp-primary" style={{ background: '#10b981', padding: '10px 20px' }}>Add Category</button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {categories.map(cat => (
+              <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f3f4f6', padding: '6px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: 'bold', color: '#4b5563' }}>
+                {cat}
+                <button onClick={() => deleteCategory(cat)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: '#ef4444' }}>
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Menu Items Section */}
+        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#374151' }}>Add Menu Item</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '10px', alignItems: 'center', marginBottom: '24px' }}>
+            <input
+              type="text"
+              placeholder="Item Name"
+              value={newItem.name}
+              onChange={e => setNewItem({ ...newItem, name: e.target.value })}
+              style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }}
+            />
+            <input
+              type="number"
+              placeholder="Price (₹)"
+              value={newItem.price}
+              onChange={e => setNewItem({ ...newItem, price: e.target.value })}
+              style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }}
+            />
+            <select
+              value={newItem.cat}
+              onChange={e => setNewItem({ ...newItem, cat: e.target.value })}
+              style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white' }}
+            >
+              {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+            <select
+              value={newItem.type}
+              onChange={e => setNewItem({ ...newItem, type: e.target.value })}
+              style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white' }}
+            >
+              <option value="veg">Veg</option>
+              <option value="non-veg">Non-Veg</option>
+            </select>
+            <button onClick={addItem} className="btn-pp btn-pp-primary" style={{ padding: '10px 20px' }}>Add Item</button>
+          </div>
+
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#374151', borderTop: '1px solid #e5e7eb', paddingTop: '24px' }}>Current Menu</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {menuItems.map(item => (
+              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', background: item.inStock ? 'white' : '#fef2f2' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '2px', background: item.type === 'veg' ? '#10b981' : '#ef4444' }}></div>
+                  <div style={{ fontWeight: 'bold', color: '#1f2937' }}>{item.name}</div>
+                  <div style={{ color: '#6b7280', fontSize: '13px' }}>{item.cat}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#94161c' }}>₹{item.price}</div>
+                  <button
+                    onClick={() => toggleStock(item.id)}
+                    style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', background: item.inStock ? '#ecfdf5' : 'transparent', color: item.inStock ? '#10b981' : '#ef4444', borderColor: item.inStock ? '#10b981' : '#ef4444' }}
+                  >
+                    {item.inStock ? 'In Stock' : 'Out of Stock'}
+                  </button>
+                  <button onClick={() => deleteItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }}>
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* --- FLOOR PLAN SETUP VIEW --- */
+const FloorPlanSetupView = ({ tables, setTables }) => {
+  const [newTableName, setNewTableName] = useState('');
+  const [newTableType, setNewTableType] = useState('A/C');
+
+  const addTable = () => {
+    if (newTableName.trim() === '') return;
+    const newId = Date.now();
+    const newTable = {
+      id: newId,
+      name: newTableName,
+      status: 'blank',
+      type: newTableType,
+      order: []
+    };
+    setTables([...tables, newTable]);
+    setNewTableName('');
+  };
+
+  const removeTable = (id) => {
+    const table = tables.find(t => t.id === id);
+    if (table && table.status !== 'blank') {
+      alert("Cannot remove a table that has an active order. Settle or clear it first.");
+      return;
+    }
+    if (confirm("Are you sure you want to remove this table?")) {
+      setTables(tables.filter(t => t.id !== id));
+    }
+  };
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f9fafb' }} className="animate-fade-in no-scrollbar">
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <LayoutGrid size={28} color="#8b5cf6" /> Floor Plan Setup
+        </h2>
+
+        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '24px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#374151' }}>Add New Table</h3>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <input
+              type="text"
+              placeholder="Table Name (e.g., T-15)"
+              value={newTableName}
+              onChange={e => setNewTableName(e.target.value)}
+              style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }}
+            />
+            <select
+              value={newTableType}
+              onChange={e => setNewTableType(e.target.value)}
+              style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white' }}
+            >
+              <option value="A/C">A/C Section</option>
+              <option value="Non A/C">Non A/C Section</option>
+            </select>
+            <button onClick={addTable} style={{ background: '#8b5cf6', color: 'white', padding: '10px 20px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Add Table</button>
+          </div>
+        </div>
+
+        {['A/C', 'Non A/C'].map(section => (
+          <div key={section} style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#374151' }}>{section} Section</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
+              {tables.filter(t => t.type === section).map(table => (
+                <div key={table.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb' }}>
+                  <span style={{ fontWeight: 'bold', color: '#4b5563' }}>{table.name}</span>
+                  <button onClick={() => removeTable(table.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }}>
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+              {tables.filter(t => t.type === section).length === 0 && <div style={{ color: '#9ca3af', fontStyle: 'italic', gridColumn: '1/-1' }}>No tables in this section.</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* --- PRINTER SETTINGS VIEW --- */
+const PrinterSettingsView = ({ settings, onSaveSettings }) => {
+  const [localSettings, setLocalSettings] = useState(settings);
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setLocalSettings(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleSave = () => {
+    onSaveSettings(localSettings);
+    alert('Printer Settings Saved Successfully!');
+  };
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f9fafb' }} className="animate-fade-in no-scrollbar">
+      <div style={{ maxWidth: '600px', margin: '0 auto', background: 'white', padding: '32px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Printer size={28} color="#94161c" /> Printer Configuration
+        </h2>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Bill Header (Text Logo)</label>
+            <input type="text" name="billHeader" value={localSettings.billHeader} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }} />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Bill Footer Message</label>
+            <input type="text" name="billFooter" value={localSettings.billFooter} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }} />
+          </div>
+
+          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '12px' }}>KOT Printing Mode</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#4b5563', cursor: 'pointer' }}>
+              <input type="checkbox" name="categorizedKOT" checked={localSettings.categorizedKOT} onChange={handleChange} style={{ width: '18px', height: '18px' }} />
+              Split KOTs by Item Category (e.g. Separate slip for Pizza vs Quick Snacks)
+            </label>
+          </div>
+
+          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '12px' }}>Bill Layout</label>
+            <select name="billLayout" value={localSettings.billLayout} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white' }}>
+              <option value="standard">Standard Detailed</option>
+              <option value="compact">Compact (Saves Paper)</option>
+            </select>
+          </div>
+
+          <button onClick={handleSave} className="btn-pp btn-pp-primary" style={{ marginTop: '20px', padding: '12px', fontSize: '16px' }}>Save Settings</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TableManagement = ({ tables, onSelectTable, onClearTable }) => {
   const getTableTotal = (order) => order.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
   return (
@@ -129,9 +451,16 @@ const TableManagement = ({ tables, onSelectTable }) => {
                 >
                   <div style={{ fontSize: '12px', color: '#4b5563', marginBottom: 'auto' }}>{table.name}</div>
                   {(table.status !== 'blank') && (
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px', alignItems: 'center' }}>
                       <Printer size={14} color="#6b7280" />
                       {(table.status === 'kot' || table.status === 'printed') && <Eye size={14} color="#6b7280" />}
+                      {/* CLEAR TABLE FAST ACTION */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onClearTable(table.id); }}
+                        style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '10px', padding: '2px 6px', cursor: 'pointer', color: '#374151' }}
+                      >
+                        Clear
+                      </button>
                     </div>
                   )}
                   {tableTotal > 0 && (
@@ -234,70 +563,108 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder }) => {
 
 /* --- DIRECT ESC/POS PRINTING HARDWARE ENGINE --- */
 // Connects bypassing Browser Dialog directly to USB/Serial EPSON/STAR format POS Thermal hardware
-const printPosToSerial = async (orderData) => {
+const printPosToSerial = async (orderData, type = 'BILL') => {
   try {
-    // 1. Request access to a USB Serial device (the thermal printer)
-    // REQUIRES: Chrome/Edge and Localhost/HTTPS 
+    const settings = JSON.parse(localStorage.getItem('pos_printer_settings') || '{"billHeader":"TYDE CAFE","billFooter":"Thank You for Visiting!","categorizedKOT":false,"billLayout":"standard"}');
+
     if (!('serial' in navigator)) throw new Error('Web Serial API not supported.');
     const port = await navigator.serial.requestPort();
     await port.open({ baudRate: 9600 });
 
-    // 2. Open hardware writer stream
     const writer = port.writable.getWriter();
     const textEncoder = new TextEncoder();
 
-    // Standard ESC/POS Macros
     const init = new Uint8Array([0x1B, 0x40]);
     const boldOn = new Uint8Array([0x1B, 0x45, 1]);
     const boldOff = new Uint8Array([0x1B, 0x45, 0]);
     const centerAlign = new Uint8Array([0x1B, 0x61, 1]);
     const leftAlign = new Uint8Array([0x1B, 0x61, 0]);
-    const cutPaper = new Uint8Array([0x1D, 0x56, 0x41, 0x08]); // Full Cut hardware command
+    const cutPaper = new Uint8Array([0x1D, 0x56, 0x41, 0x08]);
 
     const w = async (bytes) => await writer.write(bytes);
     const wT = async (text) => await writer.write(textEncoder.encode(text));
 
-    // 3. Render Receipt Payload inside Hardware Buffer
-    await w(init);
-    await w(centerAlign);
-    await w(boldOn);
-    await wT("TYDE CAFE\n");
-    await w(boldOff);
-    await wT("Tax Invoice\n");
-    await wT("--------------------------------\n");
+    if (type === 'KOT' && settings.categorizedKOT) {
+      // Print Separate KOT for each category
+      const categories = [...new Set(orderData.items.map(i => i.cat))];
 
-    await w(leftAlign);
-    await wT(`Table: ${orderData.tableName}\n`);
-    await wT(`Time:  ${new Date().toLocaleTimeString()}\n`);
-    await wT("--------------------------------\n");
-    await wT("Item                  Qty  Total\n");
-    await wT("--------------------------------\n");
+      for (const cat of categories) {
+        const catItems = orderData.items.filter(i => i.cat === cat);
 
-    for (const item of orderData.items) {
-      const nameStr = item.name.substring(0, 20).padEnd(21, ' ');
-      const qtyStr = item.qty.toString().padEnd(5, ' ');
-      const totalStr = (item.price * item.qty).toString();
-      await wT(`${nameStr}${qtyStr}${totalStr}\n`);
+        await w(init);
+        await w(centerAlign);
+        await w(boldOn);
+        await wT(`** KOT: ${cat.toUpperCase()} **\n`);
+        await w(boldOff);
+        await wT(`Table: ${orderData.tableName} | Time: ${new Date().toLocaleTimeString()}\n`);
+        await wT("--------------------------------\n");
+        await w(leftAlign);
+        await w(boldOn);
+        await wT("Qty   Item\n");
+        await w(boldOff);
+        await wT("--------------------------------\n");
+
+        for (const item of catItems) {
+          const qtyStr = item.qty.toString().padEnd(4, ' ');
+          await wT(`${qtyStr} ${item.name}\n`);
+          if (item.note) await wT(`      *NOTE: ${item.note}\n`);
+        }
+        await wT("--------------------------------\n");
+        await w(centerAlign);
+        await wT("\n\n\n\n\n");
+        await w(cutPaper);
+      }
+    } else {
+      // Standard Print (Bill or Single KOT)
+      await w(init);
+      await w(centerAlign);
+      await w(boldOn);
+      await wT(`${settings.billHeader || 'TYDE CAFE'}\n`);
+      await w(boldOff);
+      await wT(type === 'KOT' ? "KITCHEN ORDER TICKET\n" : "Tax Invoice\n");
+      await wT("--------------------------------\n");
+
+      await w(leftAlign);
+      await wT(`Table: ${orderData.tableName}\n`);
+      await wT(`Time:  ${new Date().toLocaleTimeString()}\n`);
+      await wT("--------------------------------\n");
+
+      if (settings.billLayout === 'compact') {
+        await wT("Item           Qty\n");
+        await wT("--------------------------------\n");
+        for (const item of orderData.items) {
+          const nameStr = item.name.substring(0, 15).padEnd(16, ' ');
+          await wT(`${nameStr}${item.qty}\n`);
+        }
+      } else {
+        await wT("Item                  Qty  Total\n");
+        await wT("--------------------------------\n");
+        for (const item of orderData.items) {
+          const nameStr = item.name.substring(0, 20).padEnd(21, ' ');
+          const qtyStr = item.qty.toString().padEnd(5, ' ');
+          const totalStr = (item.price * item.qty).toString();
+          await wT(`${nameStr}${qtyStr}${totalStr}\n`);
+        }
+      }
+
+      await wT("--------------------------------\n");
+
+      if (type !== 'KOT') {
+        await w(leftAlign);
+        await wT("GST (5%):               Included\n");
+        await w(boldOn);
+        await wT(`GRAND TOTAL:           Rs.${orderData.grandTotal}\n`);
+        await w(boldOff);
+        await wT("--------------------------------\n");
+        await w(centerAlign);
+        await wT(`   ${settings.billFooter || 'Thank You for Visiting'} \n`);
+      }
+      await wT("\n\n\n\n\n");
+      await w(cutPaper);
     }
 
-    await wT("--------------------------------\n");
-    await w(leftAlign);
-    await wT("GST (5%):               Included\n");
-    await w(boldOn);
-    await wT(`GRAND TOTAL:           Rs.${orderData.grandTotal}\n`);
-    await w(boldOff);
-    await wT("--------------------------------\n");
-    await w(centerAlign);
-    await wT("   Thank You for Visiting \n\n\n\n\n");
-
-    // Trigger physical hardware blade to cut paper
-    await w(cutPaper);
-
-    // 4. Release hardware port cleanly
     writer.releaseLock();
     await port.close();
-
-    console.log("Direct ESC/POS Thermal Print Successful! Bypassed Generic Windows Spooler.");
   } catch (error) {
     console.warn("Direct Printing Hardware Handshake Failed. Emulating instead.", error);
     alert(`Fast Direct Thermal Print Blocked: ${error.message}\nMake sure your thermal printer is USB connected. Falling back to the generic browser print queue for demonstration.`);
@@ -307,7 +674,7 @@ const printPosToSerial = async (orderData) => {
 };
 
 
-const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTable }) => {
+const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTable, MENU_ITEMS, CATEGORIES }) => {
   const [cart, setCart] = useState(initialOrder || []);
   const [activeCat, setActiveCat] = useState('Quick Snacks');
   const [searchQuery, setSearchQuery] = useState('');
@@ -408,7 +775,7 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
         tableName: table?.name || 'Walk-In',
         items: cart,
         grandTotal: grandTotal,
-      });
+      }, actionType.includes('KOT') ? 'KOT' : 'BILL');
     }
   };
 
@@ -679,7 +1046,7 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
 };
 
 /* --- ANALYTICS DASHBOARD --- */
-const AnalyticsDashboard = ({ orderHistory }) => {
+const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
   const totalSales = orderHistory.reduce((acc, order) => acc + order.grandTotal, 0);
   const totalOrders = orderHistory.length;
   const avgBill = totalOrders > 0 ? (totalSales / totalOrders).toFixed(2) : '0.00';
@@ -728,7 +1095,7 @@ const AnalyticsDashboard = ({ orderHistory }) => {
   }
 
   // 2. Out of Stock / Low Stock Simulation Alert
-  const lowStockItem = MENU_ITEMS.find(i => !i.inStock);
+  const lowStockItem = menuItems.find(i => !i.inStock);
   if (lowStockItem) {
     alerts.push(`Inventory Warning: "${lowStockItem.name}" is currently marked Out of Stock. Supplier action required.`);
   }
@@ -1038,6 +1405,21 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [printerSettings, setPrinterSettings] = useState(() => {
+    const saved = localStorage.getItem('pos_printer_settings');
+    return saved ? JSON.parse(saved) : { billHeader: 'TYDE CAFE', billFooter: 'Thank You for Visiting!', categorizedKOT: false, billLayout: 'standard' };
+  });
+
+  const [menuItems, setMenuItems] = useState(() => {
+    const saved = localStorage.getItem('pos_menu_items');
+    return saved ? JSON.parse(saved) : INITIAL_MENU_ITEMS;
+  });
+
+  const [categories, setCategories] = useState(() => {
+    const saved = localStorage.getItem('pos_categories');
+    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+  });
+
   useEffect(() => {
     localStorage.setItem('pos_tables_v2', JSON.stringify(tables));
   }, [tables]);
@@ -1049,6 +1431,27 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('pos_nontable_orders_v2', JSON.stringify(nonTableOrders));
   }, [nonTableOrders]);
+
+  useEffect(() => {
+    localStorage.setItem('pos_printer_settings', JSON.stringify(printerSettings));
+  }, [printerSettings]);
+
+  useEffect(() => {
+    localStorage.setItem('pos_menu_items', JSON.stringify(menuItems));
+  }, [menuItems]);
+
+  useEffect(() => {
+    localStorage.setItem('pos_categories', JSON.stringify(categories));
+  }, [categories]);
+
+  const clearTableFast = (tableId) => {
+    setTables(prev => prev.map(t => {
+      if (t.id === tableId) {
+        return { ...t, order: [], status: 'blank' };
+      }
+      return t;
+    }));
+  };
 
   const handleSelectTable = (table) => {
     setSelectedTable(table);
@@ -1134,13 +1537,13 @@ export default function App() {
 
       <main style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {view === 'tables' && (
-          <TableManagement tables={tables} onSelectTable={handleSelectTable} />
+          <TableManagement tables={tables} onSelectTable={handleSelectTable} onClearTable={clearTableFast} />
         )}
         {view === 'nontables' && (
           <NonTableManagement orders={nonTableOrders} onSelectOrder={handleSelectTable} onCreateOrder={handleCreateNonTableOrder} />
         )}
         {view === 'analytics' && (
-          <AnalyticsDashboard orderHistory={orderHistory} />
+          <AnalyticsDashboard orderHistory={orderHistory} menuItems={menuItems} />
         )}
         {view === 'dayclose' && (
           <DayCloseWizard
@@ -1156,10 +1559,27 @@ export default function App() {
         {view === 'kds' && (
           <KitchenDisplay tables={tables} nonTableOrders={nonTableOrders} onMarkReady={markOrderReady} />
         )}
+        {view === 'orderhistory' && (
+          <OrderHistoryView orderHistory={orderHistory} />
+        )}
+        {view === 'printersettings' && (
+          <PrinterSettingsView settings={printerSettings} onSaveSettings={setPrinterSettings} />
+        )}
+        {view === 'menusetup' && (
+          <MenuSetupView
+            categories={categories} setCategories={setCategories}
+            menuItems={menuItems} setMenuItems={setMenuItems}
+          />
+        )}
+        {view === 'floorplan' && (
+          <FloorPlanSetupView tables={tables} setTables={setTables} />
+        )}
         {view === 'ordering' && (
           <OrderingSystem
             table={selectedTable}
             initialOrder={selectedTable?.order || []}
+            MENU_ITEMS={menuItems}
+            CATEGORIES={categories}
             onBack={() => {
               if (selectedTable && (String(selectedTable.id).startsWith('DEL-') || String(selectedTable.id).startsWith('TAK-'))) {
                 setView('nontables');
