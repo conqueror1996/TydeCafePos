@@ -1122,7 +1122,7 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
   };
 
   const filteredItems = MENU_ITEMS.filter(item =>
-    (activeCat === 'All' || item.cat === activeCat) &&
+    (searchQuery.trim() !== '' || activeCat === 'All' || item.cat === activeCat) &&
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
