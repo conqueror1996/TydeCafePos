@@ -835,7 +835,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
 
         const kotNo = Math.floor(Math.random() * 100);
         await wT(`${settings.billHeader || 'Tyde Cafe'}\n`);
-        await wT(`KOT (${group.title}) - #${kotNo}\n`);
+        await wT(`KOT - #${kotNo}\n`);
         await wT(`${orderData.orderType || 'Dine In'}\n`);
         await wT(`Table No: ${orderData.tableName}\n`);
         await wT("--------------------------------\n");
@@ -1144,7 +1144,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         printContent += `
           <div style="${i < groupsToPrint.length - 1 ? 'page-break-after: always; margin-bottom: 20px;' : ''}">
             <div style="font-size: 14px; font-weight: bold;">${dateStr} ${timeStr}</div>
-            <h2 style="margin: 5px 0; font-size: 22px; font-weight: 900;">KOT (${group.title}) - ${Math.floor(1 + Math.random() * 99)}</h2>
+            <h2 style="margin: 5px 0; font-size: 22px; font-weight: 900;">KOT - ${Math.floor(1 + Math.random() * 99)}</h2>
             <div style="font-size: 16px; font-weight: bold;">${orderData.orderType || 'Dine In'}</div>
             <div style="font-size: 16px; font-weight: bold;">Table No: ${orderData.tableName}</div>
             <div>--------------------------------</div>
