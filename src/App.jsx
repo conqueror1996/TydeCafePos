@@ -40,8 +40,6 @@ const INITIAL_TABLES = [
   { id: 102, name: 'Table 2', status: 'blank', type: 'Non A/C', order: [] },
 ];
 
-const TAX_RATE = 0.05; // 5% GST (2.5% CGST + 2.5% SGST)
-
 // --- COMPONENTS ---
 
 const TopHeader = ({ onViewChange }) => {
@@ -403,10 +401,13 @@ const PrinterSettingsView = ({ settings, onSaveSettings }) => {
           </div>
 
           <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '12px' }}>Bill Layout</label>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '12px' }}>Print Layout Theme</label>
             <select name="billLayout" value={localSettings.billLayout} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white' }}>
               <option value="standard">Standard Detailed</option>
               <option value="compact">Compact (Saves Paper)</option>
+              <option value="modern">Modern Clean</option>
+              <option value="minimal">Ultra Minimalist</option>
+              <option value="bold">Bold & High Contrast</option>
             </select>
           </div>
 
@@ -593,21 +594,28 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
 
         await w(init);
         await w(centerAlign);
-        await w(boldOn);
-        await wT(`** KOT: ${cat.toUpperCase()} **\n`);
-        await w(boldOff);
-        await wT(`Table: ${orderData.tableName} | Time: ${new Date().toLocaleTimeString()}\n`);
+
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        await wT(`${dateStr} ${timeStr}\n`);
+
+        const kotNo = Math.floor(Math.random() * 100);
+        await wT(`KOT (Cat: ${cat}) - ${kotNo}\n`);
+        await wT(`${orderData.orderType || 'Dine In'}\n`);
+        await wT(`Table No: ${orderData.tableName}\n`);
         await wT("--------------------------------\n");
+
         await w(leftAlign);
-        await w(boldOn);
-        await wT("Qty   Item\n");
-        await w(boldOff);
+        await wT("Item        Special Note   Qty\n");
         await wT("--------------------------------\n");
 
         for (const item of catItems) {
-          const qtyStr = item.qty.toString().padEnd(4, ' ');
-          await wT(`${qtyStr} ${item.name}\n`);
-          if (item.note) await wT(`      *NOTE: ${item.note}\n`);
+          const nameStr = item.name.substring(0, 11).padEnd(12, ' ');
+          let noteText = item.note ? item.note.substring(0, 14) : '--';
+          const noteStr = noteText.padEnd(15, ' ');
+          const qtyStr = item.qty.toString().padStart(5, ' ');
+          await wT(`${nameStr}${noteStr}${qtyStr}\n`);
         }
         await wT("--------------------------------\n");
         await w(centerAlign);
@@ -618,47 +626,70 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
       // Standard Print (Bill or Single KOT)
       await w(init);
       await w(centerAlign);
-      await w(boldOn);
-      await wT(`${settings.billHeader || 'TYDE CAFE'}\n`);
-      await w(boldOff);
-      await wT(type === 'KOT' ? "KITCHEN ORDER TICKET\n" : "Tax Invoice\n");
-      await wT("--------------------------------\n");
+
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '/');
+      const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      if (settings.billLayout === 'bold') await w(boldOn);
+      await wT(`${dateStr} ${timeStr}\n`);
+
+      const kotNo = Math.floor(1 + Math.random() * 99);
+      await wT(`KOT - ${kotNo}\n`);
+
+      await wT(`${orderData.orderType || 'Dine In'}\n`);
+      await wT(`Table No: ${orderData.tableName}\n`);
+      if (settings.billLayout === 'bold') await w(boldOff);
+
+      if (settings.billLayout !== 'minimal') {
+        await wT("--------------------------------\n");
+      } else {
+        await wT("\n");
+      }
 
       await w(leftAlign);
-      await wT(`Table: ${orderData.tableName}\n`);
-      await wT(`Time:  ${new Date().toLocaleTimeString()}\n`);
-      await wT("--------------------------------\n");
 
-      if (settings.billLayout === 'compact') {
-        await wT("Item           Qty\n");
-        await wT("--------------------------------\n");
+      if (settings.billLayout === 'compact' || settings.billLayout === 'minimal') {
+        if (settings.billLayout !== 'minimal') await wT("Item           Qty\n--------------------------------\n");
         for (const item of orderData.items) {
           const nameStr = item.name.substring(0, 15).padEnd(16, ' ');
           await wT(`${nameStr}${item.qty}\n`);
         }
+      } else if (settings.billLayout === 'modern') {
+        await wT("Qty   Item\n--------------------------------\n");
+        for (const item of orderData.items) {
+          const qtyStr = item.qty.toString().padEnd(6, ' ');
+          const nameStr = item.name.substring(0, 25);
+          await wT(`${qtyStr}${nameStr}\n`);
+        }
+      } else if (settings.billLayout === 'bold') {
+        await w(boldOn);
+        await wT("ITEM                  QTY\n================================\n");
+        for (const item of orderData.items) {
+          const nameStr = item.name.substring(0, 20).padEnd(22, ' ');
+          const qtyStr = item.qty.toString();
+          await wT(`${nameStr}${qtyStr}\n`);
+        }
+        await w(boldOff);
+        await wT("================================\n");
       } else {
-        await wT("Item                  Qty  Total\n");
+        // standard layout matched perfectly to user provided image
+        await wT("Item        Special Note   Qty\n");
         await wT("--------------------------------\n");
         for (const item of orderData.items) {
-          const nameStr = item.name.substring(0, 20).padEnd(21, ' ');
-          const qtyStr = item.qty.toString().padEnd(5, ' ');
-          const totalStr = (item.price * item.qty).toString();
-          await wT(`${nameStr}${qtyStr}${totalStr}\n`);
+          const nameStr = item.name.substring(0, 11).padEnd(12, ' ');
+          let noteText = item.note ? item.note.substring(0, 14) : '--';
+          const noteStr = noteText.padEnd(15, ' ');
+          const qtyStr = item.qty.toString().padStart(5, ' ');
+          await wT(`${nameStr}${noteStr}${qtyStr}\n`);
         }
       }
 
-      await wT("--------------------------------\n");
-
-      if (type !== 'KOT') {
-        await w(leftAlign);
-        await wT("GST (5%):               Included\n");
-        await w(boldOn);
-        await wT(`GRAND TOTAL:           Rs.${orderData.grandTotal}\n`);
-        await w(boldOff);
+      if (settings.billLayout !== 'minimal' && settings.billLayout !== 'bold') {
         await wT("--------------------------------\n");
-        await w(centerAlign);
-        await wT(`   ${settings.billFooter || 'Thank You for Visiting'} \n`);
       }
+
+      // Only printing KOT layout per user request (no grand total or pricing footer)
+
       await wT("\n\n\n\n\n");
       await w(cutPaper);
     }
@@ -695,8 +726,7 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
   // Calculations
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
   const taxableAmount = Math.max(0, subtotal - discountAmt);
-  const taxes = Math.round(taxableAmount * TAX_RATE);
-  const grandTotal = taxableAmount + taxes;
+  const grandTotal = taxableAmount;
 
   const handleApplyDiscount = () => {
     if (managerInput === '9999') {
@@ -764,18 +794,20 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
 
     if (isPaid && actionType.includes('Save')) {
       // Settle and clear table with full analytics data
-      onSettleTable(table.id, { cart, subtotal, discountAmt, discountAuth, taxes, grandTotal, paymentMethod, timestamp: new Date().toISOString() });
+      onSettleTable(table.id, { cart, subtotal, discountAmt, discountAuth, taxes: 0, grandTotal, paymentMethod, timestamp: new Date().toISOString() });
     } else {
       // Just save order state
       onSaveOrder(table.id, cart, newStatus);
     }
 
     if (actionType.includes('Print')) {
+      // User explicitly requested only KOT Option should be printed
       await printPosToSerial({
         tableName: table?.name || 'Walk-In',
         items: cart,
         grandTotal: grandTotal,
-      }, actionType.includes('KOT') ? 'KOT' : 'BILL');
+        orderType: table?.type === 'Delivery' ? 'Delivery' : table?.type === 'Takeaway' ? 'Pick Up' : 'Dine In'
+      }, 'KOT');
     }
   };
 
@@ -917,10 +949,6 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
                 <span style={{ fontWeight: '600' }}>-₹{discountAmt.toFixed(2)}</span>
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: '500' }}>GST (5%):</span>
-              <span style={{ fontWeight: '600', color: '#374151' }}>₹{taxes.toFixed(2)}</span>
-            </div>
           </div>
 
           <div style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #fee2e2' }}>
@@ -975,7 +1003,7 @@ const OrderingSystem = ({ table, initialOrder, onBack, onSaveOrder, onSettleTabl
 
           <div className="footer-btn-grid">
             <button className="btn-maroon" onClick={() => handleAction('Save')}>Save</button>
-            <button className="btn-maroon" onClick={() => handleAction('Save & Print')}>Save & Print</button>
+            <button className="btn-maroon" onClick={() => handleAction('Save & Print')}>Print KOT (Save)</button>
             <button className="btn-grey" onClick={() => handleAction('KOT')}>KOT</button>
             <button className="btn-grey" style={{ background: '#374151' }} onClick={() => handleAction('KOT & Print')}>KOT & Print</button>
           </div>
