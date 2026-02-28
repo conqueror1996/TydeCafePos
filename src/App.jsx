@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Menu, Search, Store, Monitor, LayoutGrid, Clock, Bell, User,
   ChevronDown, Info, CreditCard, Banknote, Printer, Eye, Plus,
-  Minus, X, Utensils, Smartphone, BarChart3, TrendingUp, PieChart, AlertTriangle, Truck, ShoppingBag, ChefHat, MessageSquare, CheckSquare, Sunset
+  Minus, X, Utensils, Smartphone, BarChart3, TrendingUp, PieChart, AlertTriangle, Truck, ShoppingBag, ChefHat, MessageSquare, CheckSquare, Sunset, Trash2
 } from 'lucide-react';
 import './index.css';
 
