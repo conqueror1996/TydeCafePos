@@ -2,13 +2,78 @@ import React, { useState, useEffect } from 'react';
 import {
   Menu, Search, Store, Monitor, LayoutGrid, Clock, Bell, User,
   ChevronDown, ChevronUp, Info, CreditCard, Banknote, Printer, Eye, Plus,
-  Minus, X, Utensils, Smartphone, BarChart3, TrendingUp, PieChart, AlertTriangle, Truck, ShoppingBag, ChefHat, MessageSquare, CheckSquare, Sunset, Trash2
+  Minus, X, Utensils, Smartphone, BarChart3, TrendingUp, PieChart, AlertTriangle, Truck, ShoppingBag, ChefHat, MessageSquare, CheckSquare, Sunset, Trash2, Package
 } from 'lucide-react';
 import './index.css';
 import { get, set } from 'idb-keyval';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line } from 'recharts';
 // --- INITIAL MOCK DATA ---
 const MENU_VERSION = '1';
+
+const GlobalStyles = ({ settings }) => {
+  const primaryColor = settings?.accentColor || '#a3112a';
+  const secondaryColor = settings?.secondaryColor || '#7c3aed';
+  const bgColor = settings?.bgColor || '#f9fafb';
+  const textColor = settings?.textColor || '#1f2937';
+  const radius = settings?.borderRadius || '12';
+  const font = settings?.globalFont || 'Outfit';
+  const baseWeight = settings?.fontBaseWeight || 'normal';
+  const baseSize = settings?.fontBaseSize || '14';
+
+  const tableShape = settings?.tableShape || 'rounded';
+  let tableRadius = '16px';
+  if (tableShape === 'square') tableRadius = '4px';
+  if (tableShape === 'circle') tableRadius = '50%';
+
+  return (
+    <style>{`
+      :root {
+        --primary: ${primaryColor};
+        --primary-hover: ${primaryColor}dd;
+        --secondary: ${secondaryColor};
+        --bg-color: ${bgColor};
+        --text-color: ${textColor};
+        --radius-sm: ${radius / 2}px;
+        --radius-md: ${radius}px;
+        --radius-lg: ${radius * 1.5}px;
+        --table-radius: ${tableRadius};
+      }
+      * {
+        font-family: '${font}', 'Inter', system-ui, sans-serif !important;
+      }
+      body {
+        margin: 0;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        font-weight: ${baseWeight};
+        font-size: ${baseSize}px;
+      }
+      .btn-pp, .pp-table-card, .item-card, .billing-panel, .billing-tab, .payment-chip, .btn-maroon, .btn-grey {
+        border-radius: var(--radius-md) !important;
+      }
+      .pp-table-card:hover, .item-card:hover {
+        border-color: var(--primary) !important;
+      }
+      .billing-tab.active, .btn-pp-primary, .btn-maroon {
+        background: var(--primary) !important;
+        color: white !important;
+      }
+      .payment-chip.selected {
+        border-color: var(--primary) !important;
+        color: var(--primary) !important;
+      }
+      .view-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+        background: var(--bg-color);
+      }
+    `}</style>
+  );
+};
+
+const INITIAL_PRODUCT_CATEGORIES = ['Retail Products'];
+const INITIAL_PRODUCTS = [];
 
 const INITIAL_CATEGORIES = [
   "Quick Snacks", "Breads", "Burgers", "Pizzas", "Wraps", "Pastas",
@@ -109,17 +174,17 @@ const INITIAL_MENU_ITEMS = [
 const INITIAL_FLOOR_SECTIONS = ['A/C', 'Non A/C'];
 
 const INITIAL_TABLES = [
-  { id: 1, name: 'Table 1', status: 'blank', type: 'A/C', order: [] },
-  { id: 2, name: 'Table 2', status: 'blank', type: 'A/C', order: [] },
-  { id: 3, name: 'Table 3', status: 'blank', type: 'A/C', order: [] },
-  { id: 4, name: 'Table 4', status: 'blank', type: 'A/C', order: [] },
-  { id: 5, name: 'Table 5', status: 'blank', type: 'A/C', order: [] },
-  { id: 8, name: 'Table 8', status: 'blank', type: 'A/C', order: [] },
-  { id: 9, name: 'Table 9', status: 'blank', type: 'A/C', order: [] },
-  { id: 12, name: 'Table 12', status: 'blank', type: 'A/C', order: [] },
-  { id: 14, name: 'Table 14', status: 'blank', type: 'A/C', order: [] },
-  { id: 101, name: 'Table 1', status: 'blank', type: 'Non A/C', order: [] },
-  { id: 102, name: 'Table 2', status: 'blank', type: 'Non A/C', order: [] },
+  { id: 1, name: 'Table 1', status: 'blank', type: 'A/C', order: [], pos: { x: 50, y: 50 } },
+  { id: 2, name: 'Table 2', status: 'blank', type: 'A/C', order: [], pos: { x: 200, y: 50 } },
+  { id: 3, name: 'Table 3', status: 'blank', type: 'A/C', order: [], pos: { x: 350, y: 50 } },
+  { id: 4, name: 'Table 4', status: 'blank', type: 'A/C', order: [], pos: { x: 50, y: 180 } },
+  { id: 5, name: 'Table 5', status: 'blank', type: 'A/C', order: [], pos: { x: 200, y: 180 } },
+  { id: 8, name: 'Table 8', status: 'blank', type: 'A/C', order: [], pos: { x: 350, y: 180 } },
+  { id: 9, name: 'Table 9', status: 'blank', type: 'A/C', order: [], pos: { x: 500, y: 50 } },
+  { id: 12, name: 'Table 12', status: 'blank', type: 'A/C', order: [], pos: { x: 500, y: 180 } },
+  { id: 14, name: 'Table 14', status: 'blank', type: 'A/C', order: [], pos: { x: 50, y: 310 } },
+  { id: 101, name: 'Table 1', status: 'blank', type: 'Non A/C', order: [], pos: { x: 50, y: 50 } },
+  { id: 102, name: 'Table 2', status: 'blank', type: 'Non A/C', order: [], pos: { x: 200, y: 50 } },
 ];
 
 // --- COMPONENTS ---
@@ -137,11 +202,13 @@ const TopHeader = ({ onViewChange, onSimulateAggregator }) => {
             <button onClick={() => { setMenuOpen(false); onViewChange('menusetup'); }} style={{ display: 'block', width: '100%', padding: '10px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', color: '#10b981', fontWeight: 'bold', fontSize: '14px' }}>Menu Setup</button>
             <button onClick={() => { setMenuOpen(false); onViewChange('floorplan'); }} style={{ display: 'block', width: '100%', padding: '10px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', color: '#8b5cf6', fontWeight: 'bold', fontSize: '14px' }}>Floor Plan</button>
             <button onClick={() => { setMenuOpen(false); onViewChange('orderhistory'); }} style={{ display: 'block', width: '100%', padding: '10px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', color: '#374151', fontSize: '14px' }}>Order History</button>
+            <button onClick={() => { setMenuOpen(false); onViewChange('globalsettings'); }} style={{ display: 'block', width: '100%', padding: '10px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', color: 'var(--primary)', fontWeight: 'bold', fontSize: '14px' }}>Global Settings</button>
+            <button onClick={() => { setMenuOpen(false); onViewChange('productsetup'); }} style={{ display: 'block', width: '100%', padding: '10px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', color: '#3b82f6', fontWeight: 'bold', fontSize: '14px' }}>Retail Products</button>
             <button onClick={() => { setMenuOpen(false); onViewChange('printersettings'); }} style={{ display: 'block', width: '100%', padding: '10px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', color: '#374151', fontSize: '14px' }}>Printer Settings</button>
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <div style={{ background: '#94161c', color: 'white', padding: '4px 6px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>TYDE</div>
+          <div style={{ background: 'var(--primary)', color: 'white', padding: '4px 6px', borderRadius: 'var(--radius-sm)', fontSize: '12px', fontWeight: 'bold' }}>TYDE</div>
           <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1f2937' }}>CAFE</div>
         </div>
       </div>
@@ -162,11 +229,11 @@ const TopHeader = ({ onViewChange, onSimulateAggregator }) => {
           onClick={() => onViewChange('tables')}
           style={{
             cursor: 'pointer',
-            border: '2px solid #94161c',
+            border: '2px solid var(--primary)',
             background: 'white',
-            color: '#94161c',
+            color: 'var(--primary)',
             padding: '6px 16px',
-            borderRadius: '6px',
+            borderRadius: 'var(--radius-md)',
             fontWeight: 'bold',
             fontSize: '13px',
             display: 'flex',
@@ -174,8 +241,8 @@ const TopHeader = ({ onViewChange, onSimulateAggregator }) => {
             gap: '6px',
             transition: 'all 0.2s ease'
           }}
-          onMouseEnter={(e) => { e.target.style.background = '#94161c'; e.target.style.color = 'white'; }}
-          onMouseLeave={(e) => { e.target.style.background = 'white'; e.target.style.color = '#94161c'; }}
+          onMouseEnter={(e) => { e.target.style.background = 'var(--primary)'; e.target.style.color = 'white'; }}
+          onMouseLeave={(e) => { e.target.style.background = 'white'; e.target.style.color = 'var(--primary)'; }}
         >
           <LayoutGrid size={16} /> TABLE ORDER
         </button>
@@ -184,21 +251,21 @@ const TopHeader = ({ onViewChange, onSimulateAggregator }) => {
           style={{
             cursor: 'pointer',
             border: 'none',
-            background: '#94161c',
+            background: 'var(--primary)',
             color: 'white',
             padding: '8px 18px',
-            borderRadius: '6px',
+            borderRadius: 'var(--radius-md)',
             fontWeight: 'bold',
             fontSize: '13px',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            boxShadow: '0 4px 6px -1px rgba(148, 22, 28, 0.3)',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0, 0.1)',
             transition: 'all 0.2s ease',
             transform: 'scale(1.05)'
           }}
-          onMouseEnter={(e) => { e.target.style.transform = 'scale(1.1)'; e.target.style.boxShadow = '0 6px 8px -1px rgba(148, 22, 28, 0.4)'; }}
-          onMouseLeave={(e) => { e.target.style.transform = 'scale(1.05)'; e.target.style.boxShadow = '0 4px 6px -1px rgba(148, 22, 28, 0.3)'; }}
+          onMouseEnter={(e) => { e.target.style.transform = 'scale(1.1)'; e.target.style.boxShadow = '0 6px 8px -1px rgba(0,0,0, 0.2)'; }}
+          onMouseLeave={(e) => { e.target.style.transform = 'scale(1.05)'; e.target.style.boxShadow = '0 4px 6px -1px rgba(0,0,0, 0.1)'; }}
         >
           <ShoppingBag size={16} /> PICK UP ORDER
         </button>
@@ -231,34 +298,268 @@ const TopHeader = ({ onViewChange, onSimulateAggregator }) => {
 };
 
 /* --- ORDER HISTORY VIEW --- */
-const OrderHistoryView = ({ orderHistory }) => {
+const OrderHistoryView = ({ orderHistory, activePickups = [], onSelectActive }) => {
+  const [viewMode, setViewMode] = useState('card'); // 'card', 'table', 'compact'
+
+  const allOrders = [
+    ...activePickups.map(o => ({ ...o, isActive: true })),
+    ...orderHistory
+  ].sort((a, b) => new Date(b.timestamp || Date.now()) - new Date(a.timestamp || Date.now()));
+
+  const getOrderTotal = (order) => {
+    if (order.grandTotal) return order.grandTotal;
+    return (order.cart || order.order || []).reduce((acc, i) => acc + (i.price * i.qty), 0);
+  };
+
+  const stats = {
+    revenue: orderHistory.reduce((acc, o) => acc + o.grandTotal, 0),
+    active: activePickups.length,
+    avg: orderHistory.length > 0 ? (orderHistory.reduce((acc, o) => acc + o.grandTotal, 0) / orderHistory.length).toFixed(0) : 0
+  };
+
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f9fafb' }} className="animate-fade-in no-scrollbar">
-      <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#1f2937' }}>Order History</h2>
-      {orderHistory.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No orders settled yet.</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {orderHistory.slice().reverse().map((order) => (
-            <div key={order.id} style={{ background: 'white', padding: '16px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #f3f4f6', paddingBottom: '8px' }}>
-                <div>
-                  <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937', marginRight: '12px' }}>Table/Order: {order.tableId}</span>
-                  <span style={{ fontSize: '12px', color: '#6b7280' }}>{new Date(order.timestamp).toLocaleString()}</span>
-                </div>
-                <div style={{ fontWeight: 'bold', color: '#94161c', fontSize: '16px' }}>₹{order.grandTotal.toFixed(2)}</div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                <div style={{ color: '#4b5563' }}>
-                  {order.cart.map(item => `${item.qty}x ${item.name}`).join(', ')}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                  <span style={{ background: '#f5f3ff', color: '#5b21b6', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>{order.paymentMethod}</span>
-                  {order.discountAmt > 0 && <span style={{ color: '#10b981', fontSize: '11px', fontWeight: 'bold' }}>Discount: ₹{order.discountAmt}</span>}
-                </div>
-              </div>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '48px', background: '#fcfcfd' }} className="animate-fade-in no-scrollbar">
+      {/* Premium Dashboard Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: 'var(--primary)' }}></div>
+            <span style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '2px' }}>Operational Intelligence</span>
+          </div>
+          <h2 style={{ fontSize: '42px', fontWeight: '950', color: '#0f172a', letterSpacing: '-1.5px', lineHeight: '1' }}>
+            Transaction <span style={{ color: 'var(--primary)', fontStyle: 'italic' }}>Archive</span>
+          </h2>
+
+          {/* VIEW SWITCHER */}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '24px', background: '#f1f5f9', padding: '4px', borderRadius: '12px', width: 'fit-content' }}>
+            {[
+              { id: 'card', label: 'Cards', icon: LayoutGrid },
+              { id: 'table', label: 'Detailed List', icon: Menu },
+              { id: 'compact', label: 'Compact', icon: LayoutGrid }
+            ].map(mode => (
+              <button
+                key={mode.id}
+                onClick={() => setViewMode(mode.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '8px',
+                  border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '700', transition: 'all 0.2s',
+                  background: viewMode === mode.id ? 'white' : 'transparent',
+                  color: viewMode === mode.id ? '#0f172a' : '#64748b',
+                  boxShadow: viewMode === mode.id ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
+                }}
+              >
+                <mode.icon size={14} /> {mode.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ background: 'white', padding: '20px 28px', borderRadius: '24px', boxShadow: '0 20px 30px -10px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
+            <div style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Net Revenue</div>
+            <div style={{ fontSize: '28px', fontWeight: '950', color: '#0f172a' }}>₹{stats.revenue.toLocaleString()}</div>
+          </div>
+          <div style={{ background: 'white', padding: '20px 28px', borderRadius: '24px', boxShadow: '0 20px 30px -10px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
+            <div style={{ fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Ticket Avg</div>
+            <div style={{ fontSize: '28px', fontWeight: '950', color: '#0f172a' }}>₹{stats.avg}</div>
+          </div>
+          {stats.active > 0 && (
+            <div style={{ background: 'var(--primary)', padding: '20px 28px', borderRadius: '24px', boxShadow: '0 20px 30px -10px rgba(163, 17, 42, 0.3)', color: 'white' }}>
+              <div style={{ fontSize: '10px', fontWeight: '900', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Live Track</div>
+              <div style={{ fontSize: '28px', fontWeight: '950' }}>{stats.active}</div>
             </div>
-          ))}
+          )}
+        </div>
+      </div>
+
+      {allOrders.length === 0 ? (
+        <div style={{ padding: '120px 20px', textAlign: 'center' }}>
+          <div style={{ width: '100px', height: '100px', background: '#f8fafc', borderRadius: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 32px', border: '1px solid #e2e8f0', transform: 'rotate(-5deg)' }}>
+            <ShoppingBag size={40} color="#cbd5e1" />
+          </div>
+          <h3 style={{ fontSize: '24px', fontWeight: '900', color: '#1e293b' }}>No transactions recorded</h3>
+          <p style={{ color: '#64748b', fontSize: '16px', marginTop: '12px', maxWidth: '400px', margin: '12px auto' }}>Your transaction ledger is currently empty.</p>
+        </div>
+      ) : (
+        <div style={{
+          display: viewMode === 'card' ? 'grid' : 'flex',
+          flexDirection: viewMode === 'card' ? 'initial' : 'column',
+          gridTemplateColumns: viewMode === 'card' ? 'repeat(auto-fill, minmax(400px, 1fr))' : 'initial',
+          gap: viewMode === 'compact' ? '8px' : '24px'
+        }}>
+          {/* Table Header for Table Mode */}
+          {viewMode === 'table' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 2fr) 1fr 1fr 1fr', padding: '0 32px 12px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              <span>Customer / Entity</span>
+              <span style={{ textAlign: 'center' }}>Transaction Info</span>
+              <span style={{ textAlign: 'center' }}>Items Summary</span>
+              <span style={{ textAlign: 'right' }}>Grand Total</span>
+            </div>
+          )}
+
+          {allOrders.map((order, idx) => {
+            const isSettled = !order.isActive;
+            const total = getOrderTotal(order);
+            const time = order.timestamp ? new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live';
+
+            if (viewMode === 'table') {
+              return (
+                <div
+                  key={order.id || idx}
+                  onClick={() => !isSettled && onSelectActive(order)}
+                  style={{
+                    background: 'white', borderRadius: '16px', padding: '16px 32px', display: 'grid', gridTemplateColumns: 'minmax(200px, 2fr) 1fr 1fr 1fr',
+                    alignItems: 'center', border: '1px solid #f1f5f9', cursor: isSettled ? 'default' : 'pointer', transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#fcfcfd'; e.currentTarget.style.transform = 'scale(1.002)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.transform = 'scale(1)'; }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: isSettled ? '#f0fdf4' : '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {isSettled ? <CheckSquare size={16} color="#10b981" /> : <Clock size={16} color="var(--primary)" />}
+                    </div>
+                    <span style={{ fontWeight: '800', color: '#0f172a' }}>{order.customerName || order.id || 'Walk-In'}</span>
+                  </div>
+                  <div style={{ textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#64748b' }}>
+                    #{String(order.id).slice(-6)} • {time} • <span style={{ color: isSettled ? '#10b981' : 'var(--primary)' }}>{isSettled ? 'SETTLED' : 'ACTIVE'}</span>
+                  </div>
+                  <div style={{ textAlign: 'center', fontSize: '12px', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {(order.cart || order.order || []).map(i => i.name).join(', ')}
+                  </div>
+                  <div style={{ textAlign: 'right', fontWeight: '900', color: '#0f172a', fontSize: '16px' }}>₹{total.toFixed(2)}</div>
+                </div>
+              );
+            }
+
+            if (viewMode === 'compact') {
+              return (
+                <div
+                  key={order.id || idx}
+                  onClick={() => !isSettled && onSelectActive(order)}
+                  style={{
+                    background: 'white', borderRadius: '12px', padding: '12px 24px', display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'center', border: '1px solid #f1f5f9', cursor: isSettled ? 'default' : 'pointer', fontSize: '13px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isSettled ? '#10b981' : 'var(--primary)' }}></div>
+                    <span style={{ fontWeight: '800' }}>{order.customerName || order.id || 'Walk-In'}</span>
+                    <span style={{ color: '#94a3b8', fontSize: '11px' }}>ID: {String(order.id).slice(-4)}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                    <span style={{ color: '#64748b' }}>{time}</span>
+                    <span style={{ fontWeight: '900', minWidth: '80px', textAlign: 'right' }}>₹{total.toFixed(2)}</span>
+                    {!isSettled && <div style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: 'var(--primary)', color: 'white', fontWeight: '900' }}>LIVE</div>}
+                  </div>
+                </div>
+              );
+            }
+
+            // DEFAULT CARD VIEW
+            return (
+              <div
+                key={order.id || idx}
+                onClick={() => !isSettled && onSelectActive(order)}
+                style={{
+                  background: 'white',
+                  borderRadius: '28px',
+                  padding: '32px',
+                  border: '1px solid #f1f5f9',
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.01), 0 2px 4px -1px rgba(0,0,0,0.01)',
+                  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                  cursor: isSettled ? 'default' : 'pointer',
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '24px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-8px)';
+                  e.currentTarget.style.boxShadow = '0 30px 60px -12px rgba(0,0,0,0.08), 0 18px 36px -18px rgba(0,0,0,0.08)';
+                  e.currentTarget.style.borderColor = 'var(--primary)33';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.01)';
+                  e.currentTarget.style.borderColor = '#f1f5f9';
+                }}
+              >
+                {/* Card Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', gap: '16px' }}>
+                    <div style={{
+                      width: '56px', height: '56px', borderRadius: '18px',
+                      background: isSettled ? '#f0fdf4' : '#fff1f2',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                    }}>
+                      {isSettled ? <CheckSquare size={24} color="#10b981" /> : <Clock size={24} color="var(--primary)" className="animate-pulse" />}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px' }}>
+                        {order.customerName || order.id || 'Walk-In'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>
+                        ID: {String(order.id).slice(-6)} • {time}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{
+                    padding: '8px 16px', borderRadius: '12px', fontSize: '11px', fontWeight: '900', letterSpacing: '1px',
+                    background: isSettled ? '#f8fafc' : '#fff1f2',
+                    color: isSettled ? '#64748b' : 'var(--primary)',
+                    border: '1px solid #f1f5f9'
+                  }}>
+                    {isSettled ? (order.paymentMethod || 'CASH') : 'IN PROGRESS'}
+                  </div>
+                </div>
+
+                {/* Body - Items List */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {(order.cart || order.order || []).map((item, i) => (
+                      <div key={i} style={{
+                        padding: '6px 14px', background: '#f8fafc', borderRadius: '10px',
+                        fontSize: '12px', color: '#4b5563', fontWeight: '700', border: '1px solid #f1f5f9'
+                      }}>
+                        {item.qty} × {item.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Footer - Total Cost */}
+                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase' }}>Total Amount</div>
+                    <div style={{ fontSize: '28px', fontWeight: '950', color: '#0f172a', letterSpacing: '-1px' }}>₹{total.toFixed(2)}</div>
+                  </div>
+
+                  {!isSettled && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onSelectActive(order); }}
+                      style={{
+                        background: 'linear-gradient(to right, var(--primary), var(--primary-hover))',
+                        color: 'white', border: 'none', padding: '14px 28px', borderRadius: '16px',
+                        fontSize: '14px', fontWeight: '900', cursor: 'pointer',
+                        boxShadow: '0 10px 20px -5px rgba(163, 17, 42, 0.4)'
+                      }}
+                    >
+                      OPEN ORDER
+                    </button>
+                  )}
+                  {isSettled && (
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '10px', color: '#10b981', fontWeight: '900', textTransform: 'uppercase' }}>Transaction Success</div>
+                      <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                        {[1, 2, 3].map(i => <div key={i} style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#10b981' }} />)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -266,6 +567,131 @@ const OrderHistoryView = ({ orderHistory }) => {
 };
 
 /* --- MENU SETUP VIEW --- */
+
+const RetailProductSetupView = ({ categories, setCategories, menuItems, setMenuItems }) => {
+  const [newCat, setNewCat] = useState('');
+  const [newItem, setNewItem] = useState({ name: '', price: '', stockQuantity: '', cat: categories[0] || '' });
+
+  const addCategory = () => {
+    if (newCat && !categories.includes(newCat)) {
+      setCategories([...categories, newCat]);
+      if (!newItem.cat) setNewItem({ ...newItem, cat: newCat });
+      setNewCat('');
+    }
+  };
+
+  const deleteCategory = (catName) => {
+    if (window.confirm(`Are you sure you want to delete the Retail category "${catName}"?`)) {
+      const pwd = window.prompt("Security Check: Enter master password to delete category");
+      if (pwd === "biller") setCategories(categories.filter(c => c !== catName));
+    }
+  };
+
+  const addItem = () => {
+    if (newItem.name && newItem.price && newItem.cat && newItem.stockQuantity !== '') {
+      const itemToAdd = {
+        ...newItem,
+        id: Date.now(),
+        type: 'retail',
+        price: parseFloat(newItem.price),
+        stockQuantity: parseInt(newItem.stockQuantity, 10),
+        inStock: parseInt(newItem.stockQuantity, 10) > 0
+      };
+      setMenuItems([...menuItems, itemToAdd]);
+      setNewItem({ name: '', price: '', stockQuantity: '', cat: categories[0] || '' });
+    } else {
+      alert("Please fill in Name, Price, Category, and Stock Quantity.");
+    }
+  };
+
+  const deleteItem = (id) => {
+    if (window.confirm("Are you sure you want to remove this product?")) {
+      const pwd = window.prompt("Security Check: Enter master password:");
+      if (pwd === "biller") setMenuItems(menuItems.filter(item => item.id !== id));
+    }
+  };
+
+  const toggleStock = (id) => {
+    setMenuItems(menuItems.map(item => item.id === id ? { ...item, inStock: !item.inStock } : item));
+  };
+
+  const updateQuantity = (id, newQty) => {
+    setMenuItems(menuItems.map(item => {
+      if (item.id === id) {
+        const q = parseInt(newQty, 10) || 0;
+        return { ...item, stockQuantity: q, inStock: q > 0 };
+      }
+      return item;
+    }));
+  };
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f9fafb' }} className="animate-fade-in no-scrollbar">
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Package size={28} color="#3b82f6" /> Retail Product Setup
+        </h2>
+
+        {/* Categories Section */}
+        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '24px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#374151' }}>Retail Categories</h3>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+            <input type="text" placeholder="New Category Name" value={newCat} onChange={e => setNewCat(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }} />
+            <button onClick={addCategory} className="btn-pp btn-pp-primary">Add</button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {categories.map(cat => (
+              <div key={cat} style={{ background: '#f3f4f6', padding: '6px 12px', borderRadius: '20px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {cat} <button onClick={() => deleteCategory(cat)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><X size={14} /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Inventory Items Section */}
+        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#374151' }}>Product Inventory</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr auto', gap: '10px', alignItems: 'center', marginBottom: '24px' }}>
+            <input type="text" placeholder="Product Name" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }} />
+            <input type="number" placeholder="Price (₹)" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }} />
+            <input type="number" placeholder="Stock Qty" value={newItem.stockQuantity} onChange={e => setNewItem({ ...newItem, stockQuantity: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }} />
+            <select value={newItem.cat} onChange={e => setNewItem({ ...newItem, cat: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white' }}>
+              {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+            <button onClick={addItem} className="btn-pp btn-pp-primary" style={{ padding: '10px 20px', background: '#3b82f6' }}>Add</button>
+          </div>
+
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#374151', borderTop: '1px solid #e5e7eb', paddingTop: '24px' }}>Current Stock</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {menuItems.map(item => (
+              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', background: item.inStock ? 'white' : '#fef2f2' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '2px', background: '#3b82f6' }}></div>
+                  <div style={{ fontWeight: 'bold', color: '#1f2937' }}>{item.name}</div>
+                  <div style={{ color: '#6b7280', fontSize: '13px' }}>{item.cat}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#94161c' }}>₹{item.price}</div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '12px', color: '#64748b' }}>Qty:</span>
+                    <input type="number" value={item.stockQuantity} onChange={e => updateQuantity(item.id, e.target.value)} style={{ width: '60px', padding: '4px', border: '1px solid #cbd5e1', borderRadius: '4px', textAlign: 'center' }} />
+                  </div>
+
+                  <button onClick={() => toggleStock(item.id)} style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', background: item.inStock ? '#ecfdf5' : 'transparent', color: item.inStock ? '#10b981' : '#ef4444', borderColor: item.inStock ? '#10b981' : '#ef4444' }}>
+                    {item.inStock ? 'In Stock' : 'Out of Stock'}
+                  </button>
+                  <button onClick={() => deleteItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }}><X size={18} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MenuSetupView = ({ categories, setCategories, menuItems, setMenuItems }) => {
   const [newCat, setNewCat] = useState('');
   const [newItem, setNewItem] = useState({ name: '', price: '', type: 'veg', cat: categories[0] || '' });
@@ -280,7 +706,12 @@ const MenuSetupView = ({ categories, setCategories, menuItems, setMenuItems }) =
 
   const deleteCategory = (catName) => {
     if (window.confirm(`Are you sure you want to delete the category "${catName}"? This will not delete the items in this category.`)) {
-      setCategories(categories.filter(c => c !== catName));
+      const pwd = window.prompt("Security Check: Enter master password to delete category");
+      if (pwd === "biller") {
+        setCategories(categories.filter(c => c !== catName));
+      } else {
+        alert("Incorrect Password. Deletion cancelled.");
+      }
     }
   };
 
@@ -301,7 +732,12 @@ const MenuSetupView = ({ categories, setCategories, menuItems, setMenuItems }) =
 
   const deleteItem = (id) => {
     if (window.confirm("Are you sure you want to remove this item from the menu?")) {
-      setMenuItems(menuItems.filter(item => item.id !== id));
+      const pwd = window.prompt("Security Check: Enter master password to delete menu item:");
+      if (pwd === "biller") {
+        setMenuItems(menuItems.filter(item => item.id !== id));
+      } else {
+        alert("Incorrect Password. Deletion cancelled.");
+      }
     }
   };
 
@@ -311,7 +747,12 @@ const MenuSetupView = ({ categories, setCategories, menuItems, setMenuItems }) =
 
   const clearAllItems = () => {
     if (window.confirm("CRITICAL ACTION: Are you sure you want to delete ALL menu items? This cannot be undone.")) {
-      setMenuItems([]);
+      const pwd = window.prompt("Security Check: Enter master password to WIPE inventory:");
+      if (pwd === "biller") {
+        setMenuItems([]);
+      } else {
+        alert("Incorrect Password. Deletion cancelled.");
+      }
     }
   };
 
@@ -432,7 +873,6 @@ const MenuSetupView = ({ categories, setCategories, menuItems, setMenuItems }) =
 };
 
 /* --- FLOOR PLAN SETUP VIEW --- */
-/* --- FLOOR PLAN SETUP VIEW --- */
 const FloorPlanSetupView = ({ tables, setTables, sections, setSections }) => {
   const [newTableName, setNewTableName] = useState('');
   const [newTableType, setNewTableType] = useState(sections[0] || '');
@@ -440,6 +880,9 @@ const FloorPlanSetupView = ({ tables, setTables, sections, setSections }) => {
   const [newSectionName, setNewSectionName] = useState('');
   const [editingSection, setEditingSection] = useState(null);
   const [editSectionValue, setEditSectionValue] = useState('');
+  const [designModeSection, setDesignModeSection] = useState(null);
+  const [draggedTableId, setDraggedTableId] = useState(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
 
   const addTable = () => {
     if (newTableName.trim() === '' || !newTableType) return;
@@ -449,7 +892,8 @@ const FloorPlanSetupView = ({ tables, setTables, sections, setSections }) => {
       name: newTableName,
       status: 'blank',
       type: newTableType,
-      order: []
+      order: [],
+      pos: { x: 50, y: 50 }
     };
     setTables([...tables, newTable]);
     setNewTableName('');
@@ -483,7 +927,7 @@ const FloorPlanSetupView = ({ tables, setTables, sections, setSections }) => {
   const removeSection = (sec) => {
     const hasTables = tables.some(t => t.type === sec);
     if (hasTables) {
-      alert("Cannot remove a section that containing tables. Move or delete tables first.");
+      alert("Cannot remove a section containing tables. Move or delete tables first.");
       return;
     }
     if (window.confirm(`Remove section "${sec}"?`)) {
@@ -501,119 +945,346 @@ const FloorPlanSetupView = ({ tables, setTables, sections, setSections }) => {
       setEditingSection(null);
       return;
     }
-    // Update section name in list
     setSections(sections.map(s => s === editingSection ? editSectionValue.trim() : s));
-    // Update type in all tables belonging to this section
     setTables(tables.map(t => t.type === editingSection ? { ...t, type: editSectionValue.trim() } : t));
-
     if (newTableType === editingSection) setNewTableType(editSectionValue.trim());
     setEditingSection(null);
   };
 
+  const handleTableMouseDown = (e, tableId) => {
+    if (!designModeSection) return;
+    const table = tables.find(t => t.id === tableId);
+    if (!table) return;
+    e.preventDefault();
+    setDraggedTableId(tableId);
+    setOffset({
+      x: e.clientX - (table.pos?.x || 0),
+      y: e.clientY - (table.pos?.y || 0)
+    });
+  };
+
+  const handleCanvasMouseMove = (e) => {
+    if (!draggedTableId) return;
+    const newX = e.clientX - offset.x;
+    const newY = e.clientY - offset.y;
+    // Snap to grid 10px
+    const snappedX = Math.round(newX / 10) * 10;
+    const snappedY = Math.round(newY / 10) * 10;
+
+    setTables(prev => prev.map(t =>
+      t.id === draggedTableId ? { ...t, pos: { x: snappedX, y: snappedY } } : t
+    ));
+  };
+
+  const handleCanvasMouseUp = () => setDraggedTableId(null);
+
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f9fafb' }} className="animate-fade-in no-scrollbar">
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <LayoutGrid size={28} color="#8b5cf6" /> Floor Plan Setup
+    <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f9fafb' }} className="animate-fade-in no-scrollbar" onMouseMove={handleCanvasMouseMove} onMouseUp={handleCanvasMouseUp}>
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <h2 style={{ fontSize: '30px', fontWeight: '900', color: '#111827', marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <LayoutGrid size={32} color="#7c3aed" /> Floor Plan Master
+          <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#6b7280', background: '#f3f4f6', padding: '4px 12px', borderRadius: '20px', marginLeft: 'auto' }}>
+            CUSTOM DESIGN MODE
+          </span>
         </h2>
 
         {/* Section Management */}
-        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '24px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#374151' }}>Manage Sections (Areas)</h3>
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <div style={{ background: 'white', padding: '32px', borderRadius: '24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02), 0 10px 15px -10px rgba(0,0,0,0.05)', marginBottom: '32px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '20px', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Monitor size={20} color="#7c3aed" /> Spatial Sections
+          </h3>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
             <input
               type="text"
-              placeholder="New Section Name (e.g. Roof Top)"
+              placeholder="E.g. Garden View, Roof Deck"
               value={newSectionName}
               onChange={e => setNewSectionName(e.target.value)}
-              style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }}
+              style={{ flex: 1, padding: '14px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '14px', background: '#f8fafc' }}
             />
-            <button onClick={addSection} className="btn-pp" style={{ background: '#10b981', color: 'white', fontWeight: 'bold' }}>+ Add Section</button>
+            <button onClick={addSection} className="btn-pp" style={{ background: '#7c3aed', color: 'white', padding: '0 24px', borderRadius: '12px', fontWeight: 'bold', fontSize: '14px' }}>+ New Area</button>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             {sections.map(sec => (
-              <div key={sec} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f3f4f6', padding: '6px 12px', borderRadius: '20px', fontSize: '13px' }}>
+              <div key={sec} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: editingSection === sec ? '#fff' : '#f1f5f9', padding: '10px 16px', borderRadius: '14px', fontSize: '13px', fontWeight: '800', border: editingSection === sec ? '2px solid #7c3aed' : '1px solid #e2e8f0' }}>
                 {editingSection === sec ? (
-                  <>
-                    <input autoFocus value={editSectionValue} onChange={e => setEditSectionValue(e.target.value)} onBlur={saveSectionRename} onKeyDown={e => e.key === 'Enter' && saveSectionRename()} style={{ background: 'white', border: '1px solid #d1d5db', borderRadius: '4px', padding: '2px 6px', fontSize: '13px', width: '100px' }} />
-                  </>
+                  <input autoFocus value={editSectionValue} onChange={e => setEditSectionValue(e.target.value)} onBlur={saveSectionRename} onKeyDown={e => e.key === 'Enter' && saveSectionRename()} style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '13px', width: '120px' }} />
                 ) : (
-                  <>
-                    <span onClick={() => startEditSection(sec)} style={{ fontWeight: 'bold', color: '#4b5563', cursor: 'pointer' }}>{sec}</span>
-                    <button onClick={() => removeSection(sec)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#ef4444' }}><X size={14} /></button>
-                  </>
+                  <span onClick={() => startEditSection(sec)} style={{ cursor: 'pointer', color: '#4b5563' }}>{sec}</span>
                 )}
+                <button onClick={() => removeSection(sec)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: '#94a3b8', padding: 0 }}><X size={16} /></button>
               </div>
             ))}
           </div>
         </div>
 
-        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '24px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#374151' }}>Add New Table</h3>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ background: 'white', padding: '32px', borderRadius: '24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02), 0 10px 15px -10px rgba(0,0,0,0.05)', marginBottom: '32px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '20px', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <LayoutGrid size={20} color="#7c3aed" /> New Entity
+          </h3>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <input
               type="text"
-              placeholder="Table Name (e.g., T-15)"
+              placeholder="Table Label (e.g. VIP-1)"
               value={newTableName}
               onChange={e => setNewTableName(e.target.value)}
-              style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }}
+              style={{ flex: 1, padding: '14px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '14px', background: '#f8fafc' }}
             />
             <select
               value={newTableType}
               onChange={e => setNewTableType(e.target.value)}
-              style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white' }}
+              style={{ padding: '14px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}
             >
-              {!newTableType && <option value="" disabled>Select Section</option>}
-              {sections.map(sec => <option key={sec} value={sec}>{sec} Section</option>)}
+              {!newTableType && <option value="" disabled>Select Location</option>}
+              {sections.map(sec => <option key={sec} value={sec}>{sec} Area</option>)}
             </select>
-            <button onClick={addTable} style={{ background: '#8b5cf6', color: 'white', padding: '10px 20px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Add Table</button>
+            <button onClick={addTable} style={{ background: '#111827', color: 'white', padding: '14px 28px', borderRadius: '12px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Create Table</button>
           </div>
         </div>
 
         {sections.map(section => (
-          <div key={section} style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#374151' }}>{section} Section</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
-              {tables.filter(t => t.type === section).map(table => (
-                <div key={table.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb' }}>
-                  <span style={{ fontWeight: 'bold', color: '#4b5563' }}>{table.name}</span>
-                  <button onClick={() => removeTable(table.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }}>
-                    <X size={16} />
-                  </button>
-                </div>
-              ))}
-              {tables.filter(t => t.type === section).length === 0 && <div style={{ color: '#9ca3af', fontStyle: 'italic', gridColumn: '1/-1' }}>No tables in this section.</div>}
+          <div key={section} style={{ background: 'white', padding: '32px', borderRadius: '24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02), 0 100px 80px -50px rgba(0,0,0,0.03)', marginBottom: '48px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <h3 style={{ fontSize: '22px', fontWeight: '900', color: '#111827' }}>{section} <span style={{ color: '#94a3b8', fontWeight: '400' }}>Spatial Plan</span></h3>
+              </div>
+              <button
+                onClick={() => setDesignModeSection(designModeSection === section ? null : section)}
+                style={{
+                  padding: '10px 20px', borderRadius: '12px', fontSize: '13px', fontWeight: '900', cursor: 'pointer',
+                  background: designModeSection === section ? '#7c3aed' : '#f1f5f9',
+                  color: designModeSection === section ? 'white' : '#4b5563',
+                  border: 'none', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s'
+                }}
+              >
+                {designModeSection === section ? <CheckSquare size={16} /> : <TrendingUp size={16} />}
+                {designModeSection === section ? 'Finish Designing' : 'Design This Layout'}
+              </button>
             </div>
+
+            {designModeSection === section ? (
+              <div style={{
+                position: 'relative', height: '500px', background: '#f8fafc', borderRadius: '20px', border: '2px dashed #e2e8f0',
+                overflow: 'hidden', backgroundImage: 'radial-gradient(#e2e8f0 1px, transparent 1px)', backgroundSize: '20px 20px'
+              }}>
+                <div style={{ position: 'absolute', top: '16px', left: '16px', fontSize: '11px', fontWeight: '900', color: '#94a3b8', background: 'white', padding: '6px 12px', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+                  DRAG TABLES TO POSITION THEM
+                </div>
+                {tables.filter(t => t.type === section).map(table => (
+                  <div
+                    key={table.id}
+                    onMouseDown={(e) => handleTableMouseDown(e, table.id)}
+                    style={{
+                      position: 'absolute', left: `${table.pos?.x || 0}px`, top: `${table.pos?.y || 0}px`,
+                      width: '100px', height: '100px', background: 'white', borderRadius: 'var(--table-radius)', border: '2px solid var(--primary)',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'grab',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', userSelect: 'none'
+                    }}
+                  >
+                    <div style={{ fontSize: '14px', fontWeight: '900', color: 'var(--primary)' }}>{table.name}</div>
+                    <button
+                      onMouseDown={e => e.stopPropagation()}
+                      onClick={() => removeTable(table.id)}
+                      style={{ position: 'absolute', top: '4px', right: '4px', background: '#fff1f2', border: 'none', borderRadius: '50%', color: '#ef4444', padding: '4px', cursor: 'pointer' }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '16px' }}>
+                {tables.filter(t => t.type === section).map(table => (
+                  <div key={table.id} style={{ background: '#f8fafc', borderRadius: 'var(--table-radius)', padding: '16px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: '900', color: '#1e293b' }}>{table.name}</span>
+                    <button onClick={() => removeTable(table.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
-      </div>
-      {tableToRemove && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div className="animate-fade-in" style={{ background: 'white', padding: '28px', borderRadius: '12px', width: '340px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '12px', color: '#1f2937' }}>Delete Table?</h3>
-            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px', lineHeight: '1.5' }}>Are you sure you want to completely remove this table from the floor plan?</p>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                onClick={() => setTableToRemove(null)}
-                style={{ flex: 1, padding: '12px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmRemoveTable}
-                style={{ flex: 1, padding: '12px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                Yes, Delete
-              </button>
+        {tableToRemove && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+            <div className="animate-fade-in" style={{ background: 'white', padding: '28px', borderRadius: '12px', width: '340px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '12px', color: '#1f2937' }}>Delete Table?</h3>
+              <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px', lineHeight: '1.5' }}>Are you sure you want to completely remove this table from the floor plan?</p>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => setTableToRemove(null)}
+                  style={{ flex: 1, padding: '12px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRemoveTable}
+                  style={{ flex: 1, padding: '12px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  Yes, Delete
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
 
-/* --- PRINTER SETTINGS VIEW --- */
+/* --- SYSTEM SETTINGS VIEW --- */
+/* --- ADVANCED GLOBAL SETTINGS VIEW --- */
+const GlobalSettingsView = ({ settings, onSaveSettings }) => {
+  const [localSettings, setLocalSettings] = useState(settings);
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setLocalSettings(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleSave = () => {
+    onSaveSettings(localSettings);
+    alert('Global Design & System Settings Saved Successfully!');
+  };
+
+  return (
+    <div className="view-container animate-fade-in no-scrollbar">
+      <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <LayoutGrid size={28} color="var(--primary)" /> Advanced Global Settings
+        </h2>
+
+        <div style={{ background: 'white', padding: '32px', borderRadius: 'var(--radius-md)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '2px solid #f3f4f6', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px', color: '#1f2937' }}>
+            <Monitor size={20} color="var(--primary)" /> Color Theme Control
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Primary / Highlight Color</label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input type="color" name="accentColor" value={localSettings.accentColor} onChange={handleChange} style={{ width: '40px', height: '40px', border: 'none', background: 'none', cursor: 'pointer' }} />
+                <input type="text" name="accentColor" value={localSettings.accentColor} onChange={handleChange} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', color: '#111827' }} />
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Secondary Color</label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input type="color" name="secondaryColor" value={localSettings.secondaryColor || '#7c3aed'} onChange={handleChange} style={{ width: '40px', height: '40px', border: 'none', background: 'none', cursor: 'pointer' }} />
+                <input type="text" name="secondaryColor" value={localSettings.secondaryColor || '#7c3aed'} onChange={handleChange} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', color: '#111827' }} />
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>App Background</label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input type="color" name="bgColor" value={localSettings.bgColor || '#f9fafb'} onChange={handleChange} style={{ width: '40px', height: '40px', border: 'none', background: 'none', cursor: 'pointer' }} />
+                <input type="text" name="bgColor" value={localSettings.bgColor || '#f9fafb'} onChange={handleChange} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', color: '#111827' }} />
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Main Text Color</label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input type="color" name="textColor" value={localSettings.textColor || '#1f2937'} onChange={handleChange} style={{ width: '40px', height: '40px', border: 'none', background: 'none', cursor: 'pointer' }} />
+                <input type="text" name="textColor" value={localSettings.textColor || '#1f2937'} onChange={handleChange} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', color: '#111827' }} />
+              </div>
+            </div>
+          </div>
+
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '2px solid #f3f4f6', paddingBottom: '12px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '10px', color: '#1f2937' }}>
+            <LayoutGrid size={20} color="var(--primary)" /> Component & Floor Plan Design
+          </h3>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Global Corner Styling (Roundness)</label>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {['0', '4', '8', '12', '24'].map(r => (
+                <button
+                  key={r}
+                  onClick={() => setLocalSettings(prev => ({ ...prev, borderRadius: r }))}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: `${r}px`, border: `2px solid ${localSettings.borderRadius === r ? localSettings.accentColor : '#e5e7eb'}`,
+                    background: localSettings.borderRadius === r ? `${localSettings.accentColor}10` : 'white',
+                    color: '#111827',
+                    fontSize: '11px', fontWeight: 'bold', cursor: 'pointer'
+                  }}
+                >
+                  {r === '0' ? 'Square' : r === '24' ? 'Pill' : `${r}px`}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginTop: '12px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Table Shape (Floor Plan & Ordering)</label>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {['square', 'rounded', 'circle'].map(shape => (
+                <button
+                  key={shape}
+                  onClick={() => setLocalSettings(prev => ({ ...prev, tableShape: shape }))}
+                  style={{
+                    flex: 1, padding: '10px', textTransform: 'capitalize',
+                    borderRadius: shape === 'square' ? '4px' : shape === 'circle' ? '50px' : '16px',
+                    border: `2px solid ${localSettings.tableShape === shape ? localSettings.accentColor : '#e5e7eb'}`,
+                    background: localSettings.tableShape === shape ? `${localSettings.accentColor}10` : 'white',
+                    color: '#111827',
+                    fontSize: '11px', fontWeight: 'bold', cursor: 'pointer'
+                  }}
+                >
+                  {shape}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '2px solid #f3f4f6', paddingBottom: '12px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '10px', color: '#1f2937' }}>
+            <Info size={20} color="var(--primary)" /> Typography Settings
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Global Interface Font</label>
+              <select name="globalFont" value={localSettings.globalFont || 'Outfit'} onChange={handleChange} style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white', color: '#111827' }}>
+                <option value="Outfit">Outfit (Default Modern)</option>
+                <option value="Inter">Inter (Clean Tech)</option>
+                <option value="'Roboto', sans-serif">Roboto (Material)</option>
+                <option value="'Segoe UI', Tahoma, Geneva, Verdana, sans-serif">System Default</option>
+                <option value="'Courier New', Courier, monospace">Classic Terminal</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Base Font Size (px)</label>
+              <input type="number" name="fontBaseSize" value={localSettings.fontBaseSize || '14'} onChange={handleChange} style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #d1d5db', color: '#111827' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Base Font Weight</label>
+              <select name="fontBaseWeight" value={localSettings.fontBaseWeight || 'normal'} onChange={handleChange} style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white', color: '#111827' }}>
+                <option value="300">Light (300)</option>
+                <option value="normal">Regular (400)</option>
+                <option value="500">Medium (500)</option>
+                <option value="bold">Bold (700)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '20px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#1f2937', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Info size={18} color="#64748b" /> Global Logic
+            </h3>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
+              <input type="checkbox" name="autoServiceCharge" checked={localSettings.autoServiceCharge} onChange={handleChange} style={{ width: '20px', height: '20px' }} />
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b' }}>Auto-Apply Service Charge</div>
+                <div style={{ fontSize: '12px', color: '#64748b' }}>If enabled, default service charge will be added to every new bill.</div>
+              </div>
+            </label>
+          </div>
+
+          <button onClick={handleSave} style={{ marginTop: '20px', padding: '14px', background: localSettings.accentColor, color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', boxShadow: `0 4px 6px -1px ${localSettings.accentColor}30` }}>
+            Save Global Settings
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* --- SYSTEM SETTINGS VIEW --- */
 const PrinterSettingsView = ({ settings, onSaveSettings, categories }) => {
   const [localSettings, setLocalSettings] = useState(settings);
 
@@ -639,143 +1310,236 @@ const PrinterSettingsView = ({ settings, onSaveSettings, categories }) => {
   };
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f9fafb' }} className="animate-fade-in no-scrollbar">
-      <div style={{ maxWidth: '600px', margin: '0 auto', background: 'white', padding: '32px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Printer size={28} color="#94161c" /> Printer Configuration
-        </h2>
+    <div className="view-container animate-fade-in no-scrollbar">
+      <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ background: 'white', padding: '32px', borderRadius: 'var(--radius-md)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', borderBottom: '2px solid #f3f4f6', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px', color: '#1f2937' }}>
+            <Printer size={24} color="#64748b" /> Hardware Receipt Configuration
+          </h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Bill Header (Text Logo)</label>
-            <input type="text" name="billHeader" value={localSettings.billHeader} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }} />
+            <input type="text" name="billHeader" value={localSettings.billHeader} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', color: '#111827' }} />
           </div>
 
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Bill Footer Message</label>
-            <input type="text" name="billFooter" value={localSettings.billFooter} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }} />
+            <input type="text" name="billFooter" value={localSettings.billFooter} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', color: '#111827' }} />
           </div>
 
           <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '12px' }}>KOT Printing Mode</label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#4b5563', cursor: 'pointer', marginBottom: '12px' }}>
-              <input type="checkbox" name="categorizedKOT" checked={localSettings.categorizedKOT} onChange={handleChange} style={{ width: '18px', height: '18px' }} />
-              Split ALL KOTs heavily by Item Category (Every category gets its own slip)
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>Custom KOT Stations</label>
+              <button onClick={() => {
+                const name = window.prompt("Enter new Station Name (e.g. Beverages, Pizza):");
+                if (name) {
+                  setLocalSettings(prev => ({
+                    ...prev,
+                    printerStations: [...(prev.printerStations || []), { id: Date.now().toString(), name, categories: [] }]
+                  }));
+                }
+              }} style={{ padding: '6px 12px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>+ Add Station</button>
+            </div>
 
-            {!localSettings.categorizedKOT && (
-              <div style={{ padding: '12px', background: '#f3f4f6', borderRadius: '8px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#4b5563', marginBottom: '8px' }}>OR Select Specific Categories to Print Separately on their own slips:</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {categories.map(cat => (
-                    <label key={cat} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', border: `1px solid ${(localSettings.separatePrintCategories || []).includes(cat) ? '#94161c' : '#d1d5db'}`, padding: '6px 12px', borderRadius: '20px', background: (localSettings.separatePrintCategories || []).includes(cat) ? '#fdf2f2' : 'white', color: (localSettings.separatePrintCategories || []).includes(cat) ? '#94161c' : '#374151', cursor: 'pointer', transition: 'all 0.2s' }}>
-                      <input
-                        type="checkbox"
-                        checked={(localSettings.separatePrintCategories || []).includes(cat)}
-                        onChange={() => toggleCategory(cat)}
-                        style={{ display: 'none' }}
-                      />
-                      {(localSettings.separatePrintCategories || []).includes(cat) && <CheckSquare size={14} color="#94161c" />}
-                      {cat}
-                    </label>
-                  ))}
+            <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '16px' }}>Group categories into stations. Any category not assigned to a station will print together as "Main Kitchen".</p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {(localSettings.printerStations || []).map(station => (
+                <div key={station.id} style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1e293b' }}>{station.name}</div>
+                    <button onClick={() => {
+                      if (window.confirm('Remove this station?')) {
+                        setLocalSettings(prev => ({ ...prev, printerStations: prev.printerStations.filter(s => s.id !== station.id) }));
+                      }
+                    }} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>Remove</button>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {categories.map(cat => {
+                      const isSelected = station.categories.includes(cat);
+                      return (
+                        <label key={cat} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', border: `1px solid ${isSelected ? 'var(--primary)' : '#d1d5db'}`, padding: '4px 10px', borderRadius: '20px', background: isSelected ? 'var(--primary)' : 'white', color: isSelected ? 'white' : '#4b5563', cursor: 'pointer', transition: 'all 0.2s' }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {
+                              setLocalSettings(prev => ({
+                                ...prev,
+                                printerStations: prev.printerStations.map(s => {
+                                  if (s.id === station.id) {
+                                    return { ...s, categories: isSelected ? s.categories.filter(c => c !== cat) : [...s.categories, cat] };
+                                  }
+                                  // Auto-remove from other stations if selected here
+                                  return { ...s, categories: s.categories.filter(c => c !== cat) };
+                                })
+                              }));
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                          {cat}
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
 
           <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '12px' }}>Print Layout Theme</label>
-            <select name="billLayout" value={localSettings.billLayout} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white', marginBottom: '16px' }}>
-              <option value="standard">Standard Detailed</option>
-              <option value="compact">Compact (Saves Paper)</option>
-              <option value="modern">Modern Clean</option>
-              <option value="minimal">Ultra Minimalist</option>
-              <option value="bold">Bold & High Contrast</option>
-            </select>
-          </div>
-
-          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', gap: '12px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Typography</label>
-              <select name="printFontFamily" value={localSettings.printFontFamily || 'Helvetica, Arial, sans-serif'} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white', fontSize: '12px' }}>
-                <option value="Helvetica, Arial, sans-serif">Sans-Serif (Modern)</option>
-                <option value="'Courier New', Courier, monospace">Monospace (Receipt)</option>
-                <option value="'Times New Roman', Times, serif">Serif (Classic)</option>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '12px' }}>Print Typography</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <select name="printFontFamily" value={localSettings.printFontFamily} onChange={handleChange} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white', fontSize: '12px', color: '#111827' }}>
+                <option value="Helvetica, Arial, sans-serif">Sans-Serif</option>
+                <option value="'Courier New', Courier, monospace">Monospace</option>
               </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Size (px)</label>
-              <input type="number" name="printFontSize" value={localSettings.printFontSize || 13} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '12px' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Weight</label>
-              <select name="printFontWeight" value={localSettings.printFontWeight || 'normal'} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white', fontSize: '12px' }}>
-                <option value="normal">Normal</option>
-                <option value="500">Medium</option>
-                <option value="bold">Bold</option>
-                <option value="900">Heavy</option>
-              </select>
+              <input type="number" name="printFontSize" value={localSettings.printFontSize} onChange={handleChange} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '12px', color: '#111827' }} />
             </div>
           </div>
 
-          <button onClick={handleSave} className="btn-pp btn-pp-primary" style={{ marginTop: '20px', padding: '12px', fontSize: '16px' }}>Save Settings</button>
+          <button onClick={handleSave} style={{ marginTop: '20px', padding: '14px', background: localSettings.accentColor, color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', boxShadow: `0 4px 6px -1px ${localSettings.accentColor}30` }}>
+            Save Printer Configurations
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-const TableManagement = ({ tables, floorPlanSections, onSelectTable, onClearTable }) => {
+const TableManagement = ({ tables, floorPlanSections, onSelectTable, onClearTable, settings, onQuickSettle, onQuickPrint }) => {
   const [tableToClear, setTableToClear] = useState(null);
+  const [viewMode, setViewMode] = useState('map'); // 'grid' or 'map'
   const getTableTotal = (order) => order.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }} className="animate-fade-in no-scrollbar">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: '#374151' }}>Table View</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button className="btn-pp btn-pp-primary" style={{ padding: '6px 12px' }}>+ Table Reservation</button>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#fcfcfd' }} className="animate-fade-in no-scrollbar">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+        <div>
+          <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#111827', letterSpacing: '-0.5px' }}>Spatial Tables</h2>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+            {['map', 'grid'].map(m => (
+              <button
+                key={m}
+                onClick={() => setViewMode(m)}
+                style={{
+                  padding: '8px 16px', borderRadius: '12px', fontSize: '11px', fontWeight: '900', border: 'none', cursor: 'pointer',
+                  background: viewMode === m ? 'black' : '#f1f5f9', color: viewMode === m ? 'white' : '#64748b'
+                }}
+              >
+                {m.toUpperCase()} VIEW
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '16px', fontSize: '10px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '10px', height: '10px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '3px' }}></div> VACANT</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '10px', height: '10px', background: 'var(--primary)', borderRadius: '3px' }}></div> RUNNING</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '10px', height: '10px', background: '#10b981', borderRadius: '3px' }}></div> PRINTED</div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', fontSize: '10px', color: '#6b7280', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', border: '1px solid #d1d5db', background: 'white', borderRadius: '2px' }}></div> Blank Table</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', background: '#bae6fd', borderRadius: '2px' }}></div> Running Table</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', background: '#bbf7d0', borderRadius: '2px' }}></div> Printed Table</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', background: '#fef08a', borderRadius: '2px' }}></div> Running KOT</div>
-      </div>
-
       {(floorPlanSections || []).map(section => (
-        <div key={section} style={{ marginBottom: '30px' }}>
-          <h3 className="table-section-header">{section}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px' }}>
-            {tables.filter(t => t.type === section).map(table => {
-              const tableTotal = getTableTotal(table.order);
-              return (
-                <div
-                  key={table.id}
-                  className={`pp-table-card status-${table.status}`}
-                  onClick={() => onSelectTable(table)}
-                  style={{ height: '100px', padding: '10px' }}
-                >
-                  <div style={{ fontSize: '12px', color: '#4b5563', marginBottom: 'auto' }}>{table.name}</div>
-                  {(table.status !== 'blank') && (
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px', alignItems: 'center' }}>
-                      <Printer size={14} color="#6b7280" />
-                      {(table.status === 'kot' || table.status === 'printed') && <Eye size={14} color="#6b7280" />}
-                      <div onClick={(e) => { e.stopPropagation(); setTableToClear(table.id); }} style={{ padding: '4px', background: '#fee2e2', borderRadius: '4px', cursor: 'pointer', display: 'flex', marginLeft: 'auto' }}>
-                        <Trash2 size={14} color="#dc2626" />
-                      </div>
+        <div key={section} style={{ marginBottom: '48px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '24px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>{section} SECTION</h3>
+
+          {viewMode === 'map' ? (
+            <div style={{
+              position: 'relative', height: '550px', background: 'white', borderRadius: '32px', border: '1px solid #f1f5f9', overflow: 'auto',
+              backgroundImage: 'radial-gradient(#f1f5f9 1px, transparent 1px)', backgroundSize: '30px 30px'
+            }}>
+              {tables.filter(t => t.type === section).map(table => {
+                const tableTotal = getTableTotal(table.order);
+                const isRunning = table.status !== 'blank';
+                const isPrinted = table.status === 'printed';
+
+                return (
+                  <div
+                    key={table.id}
+                    onClick={() => onSelectTable(table)}
+                    style={{
+                      position: 'absolute',
+                      left: `${table.pos?.x || 0}px`,
+                      top: `${table.pos?.y || 0}px`,
+                      width: '120px',
+                      height: '120px',
+                      background: isPrinted ? '#f0fdf4' : isRunning ? 'var(--primary)10' : 'white',
+                      borderRadius: 'var(--table-radius)',
+                      border: `2px solid ${isPrinted ? '#10b981' : isRunning ? 'var(--primary)' : '#f1f5f9'}`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '12px',
+                      cursor: 'pointer',
+                      boxShadow: isRunning ? '0 10px 15px -3px rgba(124, 58, 237, 0.15)' : '0 4px 6px -1px rgba(0,0,0,0.02)',
+                      transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1) translateY(0)'; }}
+                  >
+                    <div style={{ fontSize: '14px', fontWeight: '900', color: isRunning ? '#1f2937' : '#94a3b8' }}>{table.name}</div>
+                    {tableTotal > 0 && (
+                      <div style={{ marginTop: '8px', fontSize: '14px', fontWeight: '950', color: isPrinted ? '#10b981' : 'var(--primary)' }}>₹{tableTotal}</div>
+                    )}
+                    {isRunning && (
+                      <>
+                        <div style={{ position: 'absolute', top: '8px', left: '8px' }}>
+                          <TimeElapsed createdAt={table.createdAt} />
+                        </div>
+                        <div style={{ position: 'absolute', top: '8px', right: '8px', display: 'flex', gap: '4px' }}>
+                          <div title="Print Bill" onClick={(e) => { e.stopPropagation(); onQuickPrint(table); }} style={{ padding: '4px', background: 'white', borderRadius: '4px', cursor: 'pointer', border: '1px solid #e2e8f0' }}>
+                            <Printer size={12} color="#64748b" />
+                          </div>
+                          <div title="Settle Bill" onClick={(e) => { e.stopPropagation(); onQuickSettle(table); }} style={{ padding: '4px', background: 'var(--primary)', color: 'white', borderRadius: '4px', cursor: 'pointer' }}>
+                            <CheckSquare size={12} />
+                          </div>
+                        </div>
+                        <div style={{ position: 'absolute', bottom: '12px', right: '12px', display: 'flex', gap: '4px' }}>
+                          <div onClick={(e) => { e.stopPropagation(); setTableToClear(table.id); }} style={{ padding: '6px', background: '#fee2e2', borderRadius: '8px', cursor: 'pointer' }}>
+                            <Trash2 size={12} color="#ef4444" />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px' }}>
+              {tables.filter(t => t.type === section).map(table => {
+                const tableTotal = getTableTotal(table.order);
+                const isRunning = table.status !== 'blank';
+                const isPrinted = table.status === 'printed';
+
+                return (
+                  <div
+                    key={table.id}
+                    onClick={() => onSelectTable(table)}
+                    className={`pp-table-card ${isRunning ? (isPrinted ? 'status-printed' : 'status-running') : 'status-blank'}`}
+                    style={{ height: '110px', padding: '16px', borderRadius: 'var(--table-radius)', border: '1px solid #f1f5f9', position: 'relative' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '900', color: '#4b5563' }}>{table.name}</div>
+                      {isRunning && <TimeElapsed createdAt={table.createdAt} />}
                     </div>
-                  )}
-                  {tableTotal > 0 && (
-                    <div style={{ marginTop: 'auto', fontWeight: 'bold', fontSize: '13px' }}>₹{tableTotal}</div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    {tableTotal > 0 && <div style={{ fontSize: '16px', fontWeight: '950', marginTop: 'auto' }}>₹{tableTotal}</div>}
+                    {isRunning && (
+                      <>
+                        <div style={{ position: 'absolute', top: '35px', right: '10px', display: 'flex', gap: '6px' }}>
+                          <div title="Print Bill" onClick={(e) => { e.stopPropagation(); onQuickPrint(table); }} style={{ padding: '4px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '4px', cursor: 'pointer' }}><Printer size={12} color="#64748b" /></div>
+                          <div title="Settle Bill" onClick={(e) => { e.stopPropagation(); onQuickSettle(table); }} style={{ padding: '4px', background: 'var(--primary)', color: 'white', borderRadius: '4px', cursor: 'pointer' }}><CheckSquare size={12} /></div>
+                        </div>
+                        <div onClick={(e) => { e.stopPropagation(); setTableToClear(table.id); }} style={{ position: 'absolute', bottom: '10px', right: '10px', padding: '6px', background: '#fee2e2', borderRadius: '8px', cursor: 'pointer' }}>
+                          <Trash2 size={12} color="#ef4444" />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       ))}
 
@@ -849,7 +1613,7 @@ const KitchenDisplay = ({ tables, nonTableOrders, onMarkReady }) => {
   );
 };
 
-const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder }) => {
+const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder, onViewChange, onQuickSettle, onQuickPrint }) => {
   const getOrderTotal = (orderArr) => orderArr.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
   return (
@@ -857,7 +1621,7 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b' }}>Pickup Orders Dashboard</h2>
-          <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Manage all takeaway and delivery orders from one place.</p>
+          <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Showing recent active pickup and delivery orders.</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
@@ -879,24 +1643,21 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder }) => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
         {orders.length === 0 && (
           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px', background: 'white', borderRadius: '12px', border: '2px dashed #e2e8f0' }}>
             <ShoppingBag size={48} color="#cbd5e1" style={{ margin: '0 auto 16px' }} />
             <div style={{ color: '#94a3b8', fontSize: '15px', fontWeight: '500' }}>No active pickup orders at the moment.</div>
           </div>
         )}
-        {orders.map(order => {
+        {[...orders].reverse().slice(0, 10).map(order => {
           const tableTotal = getOrderTotal(order.order);
           let bg = order.type === 'Delivery' ? '#fff1f2' : '#f0f9ff';
           let text = order.type === 'Delivery' ? '#be123c' : '#0369a1';
           let border = order.type === 'Delivery' ? '#ffe4e6' : '#e0f2fe';
-
           if (order.type === 'Zomato') { bg = '#fff1f2'; text = '#e11d48'; border = '#ffe4e6'; }
           if (order.type === 'Swiggy') { bg = '#fff7ed'; text = '#c2410c'; border = '#ffedd5'; }
           if (order.type === 'Thrive') { bg = '#f0fdf4'; text = '#15803d'; border = '#dcfce7'; }
-
-          // Map internal status to requested status labels
           let statusLabel = 'Preparing';
           let statusColor = '#f59e0b';
           if (order.status === 'printed') { statusLabel = 'Ready'; statusColor = '#10b981'; }
@@ -905,45 +1666,54 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder }) => {
           return (
             <div
               key={order.id}
-              className={`pp-table-card status-${order.status}`}
               onClick={() => onSelectOrder(order)}
               style={{
-                alignItems: 'flex-start',
-                padding: '20px',
-                height: 'auto',
-                background: 'white',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s'
+                background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column'
               }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '12px' }}>
-                <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#1e293b' }}>{order.customerName || order.name}</div>
-                <div style={{ fontSize: '10px', background: bg, color: text, padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', border: `1px solid ${border}`, textTransform: 'uppercase' }}>{order.type}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '12px', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#1e293b' }}>{order.customerName || order.name}</div>
+                  <TimeElapsed createdAt={order.createdAt} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                  <div style={{ fontSize: '10px', background: bg, color: text, padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', border: `1px solid ${border}`, textTransform: 'uppercase' }}>{order.type}</div>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <div title="Print Bill" onClick={(e) => { e.stopPropagation(); onQuickPrint(order); }} style={{ padding: '6px', background: '#f8fafc', borderRadius: '6px', cursor: 'pointer', border: '1px solid #e2e8f0' }}><Printer size={12} color="#64748b" /></div>
+                    <div title="Settle Bill" onClick={(e) => { e.stopPropagation(); onQuickSettle(order); }} style={{ padding: '6px', background: 'var(--primary)', color: 'white', borderRadius: '6px', cursor: 'pointer' }}><CheckSquare size={12} /></div>
+                  </div>
+                </div>
               </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px', marginTop: '4px' }}>
                 <Clock size={12} color="#64748b" />
                 <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>{statusLabel}</span>
                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusColor }}></div>
               </div>
-
               <div style={{ fontSize: '13px', color: '#475569', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <User size={14} color="#94a3b8" /> {order.phone || 'Walk-In Customer'}
+                <User size={14} color="#94a3b8" /> {order.phone || 'Walk-In'}
               </div>
-
               <div style={{ borderTop: '1px solid #f1f5f9', width: '100%', paddingTop: '12px', marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#64748b' }}>{order.order.reduce((acc, i) => acc + i.qty, 0)} Items Ordered</div>
+                <div style={{ fontSize: '12px', color: '#64748b' }}>{order.order.reduce((acc, i) => acc + i.qty, 0)} Items</div>
                 <div style={{ fontWeight: '800', fontSize: '16px', color: '#94161c' }}>₹{tableTotal}</div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {orders.length > 10 && (
+        <div style={{ textAlign: 'center', padding: '20px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '12px' }}>Showing 10 most recent orders. There are {orders.length - 10} more active pickups.</p>
+          <button
+            onClick={() => onViewChange('orderhistory')}
+            style={{ background: 'white', border: '1px solid #94161c', color: '#94161c', padding: '8px 24px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+          >
+            View All Active & Past Orders in History <Clock size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -951,6 +1721,14 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder }) => {
 /* --- DIRECT ESC/POS PRINTING HARDWARE ENGINE --- */
 // Connects bypassing Browser Dialog directly to USB/Serial EPSON/STAR format POS Thermal hardware
 const printPosToSerial = async (orderData, type = 'BILL') => {
+  let seqNumber = 1;
+  try {
+    const key = type === 'BILL' ? 'pos_bill_sequence' : 'pos_kot_sequence';
+    seqNumber = await get(key) || 1;
+    await set(key, seqNumber + 1);
+  } catch (e) { }
+  const formattedSeq = seqNumber.toString().padStart(4, '0');
+
   let settings = { billHeader: 'TYDE CAFE', billFooter: 'Thank You for Visiting!', categorizedKOT: false, billLayout: 'standard' };
   try {
     const rawSettings = await get('pos_printer_settings');
@@ -983,31 +1761,31 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
     if (type === 'KOT') {
       let groupsToPrint = [];
 
-      if (settings.categorizedKOT) {
-        // Split Everything heavily (Original Behavior)
-        const categoriesToPrint = [...new Set(orderData.items.map(i => i.cat))];
-        groupsToPrint = categoriesToPrint.map(cat => ({
-          title: `Cat: ${cat}`,
-          items: orderData.items.filter(i => i.cat === cat)
-        }));
-      } else if (settings.separatePrintCategories && settings.separatePrintCategories.length > 0) {
-        // Split specific categories into their own KOTs
-        const separateCats = settings.separatePrintCategories;
+      if (settings.printerStations && settings.printerStations.length > 0) {
+        // Station logic
         const mainItems = [];
-        const separatedGroups = {};
+        const stationsMap = {}; // stationName -> items
 
         orderData.items.forEach(item => {
-          if (separateCats.includes(item.cat)) {
-            if (!separatedGroups[item.cat]) separatedGroups[item.cat] = [];
-            separatedGroups[item.cat].push(item);
+          let assignedStation = null;
+          for (const st of settings.printerStations) {
+            if (st.categories.includes(item.cat)) {
+              assignedStation = st.name;
+              break;
+            }
+          }
+
+          if (assignedStation) {
+            if (!stationsMap[assignedStation]) stationsMap[assignedStation] = [];
+            stationsMap[assignedStation].push(item);
           } else {
             mainItems.push(item);
           }
         });
 
         // Push separated groups
-        Object.entries(separatedGroups).forEach(([cat, items]) => {
-          groupsToPrint.push({ title: `Station: ${cat}`, items });
+        Object.entries(stationsMap).forEach(([stName, items]) => {
+          groupsToPrint.push({ title: `Station: ${stName}`, items });
         });
 
         // Push remaining main items on 1 KOT
@@ -1031,9 +1809,8 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
         await wT(`${dateStr} ${timeStr}\n`);
 
-        const kotNo = Math.floor(Math.random() * 100);
         await wT(`${settings.billHeader || 'Tyde Cafe'}\n`);
-        await wT(`KOT - #${kotNo}\n`);
+        await wT(`KOT - #${formattedSeq}\n`);
         await wT(`${orderData.orderType || 'Dine In'}\n`);
         await wT(`Table No: ${orderData.tableName}\n`);
         await wT("--------------------------------\n");
@@ -1072,7 +1849,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         await wT("Nerul Ferry Terminal\n");
         await wT("--------------------------------\n");
         await w(leftAlign);
-        await wT("Name:\n");
+        await wT(`Cust: ${orderData.customerName || ''} ${orderData.customerPhone || ''}\n`);
         await wT("--------------------------------\n");
         const paddedDate = `Date: ${dateStr}`.padEnd(19, ' ');
         const paddedOrder = `${orderData.orderType || 'Dine In'}: ${orderData.tableName || 'B4'}`.padEnd(13, ' ');
@@ -1088,8 +1865,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         }
 
         await wT(`${timeStr}\n`);
-        const billNo = Math.floor(1000 + Math.random() * 9000);
-        await wT(`Cashier: biller   Bill No.: ${billNo}\n`);
+        await wT(`Cashier: biller   Bill No.: ${formattedSeq}\n`);
         await wT("--------------------------------\n");
         await wT("Item              Qty  Price Amount\n");
         await wT("--------------------------------\n");
@@ -1205,7 +1981,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
     // tailored to 80mm thermal paper widths
     let printContent = `
       <div style="width: 80mm; font-family: ${settings.printFontFamily || 'Helvetica, Arial, sans-serif'}; font-size: ${settings.printFontSize || '13'}px; font-weight: ${settings.printFontWeight || 'normal'}; color: #000; background: white; margin: 0 auto;">
-    `;
+        `;
 
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
@@ -1219,13 +1995,13 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
       printContent += `
           <h2 style="font-size: 18px; font-weight: bold; margin: 0 0 5px 0;">${settings.billHeader || 'Tyde Cafe'}</h2>
           <div style="font-size: 14px; margin-bottom: 10px;">Nerul Ferry Terminal</div>
-          
+
           <div style="border-top: 1px solid black; margin: 8px 0;"></div>
           <div style="text-align: left; font-size: 14px;">
-            Name: 
+            Customer: ${orderData.customerName || ''} ${orderData.customerPhone ? `(${orderData.customerPhone})` : ''}
           </div>
           <div style="border-top: 1px solid black; margin: 8px 0;"></div>
-          
+
           <div style="display: flex; justify-content: space-between; text-align: left; font-size: 14px;">
             <div style="flex: 1.2;">
               <div>Date: ${dateStr}</div>
@@ -1234,12 +2010,12 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
             </div>
             <div style="flex: 1;">
               <div style="font-weight: bold;">${orderData.orderType || 'Dine In'}: ${orderData.tableName || 'B4'}</div>
-              <div style="margin-top: 18px;">Bill No.: ${Math.floor(1000 + Math.random() * 9000)}</div>
+              <div style="margin-top: 18px;">Bill No.: ${formattedSeq}</div>
             </div>
           </div>
-          
+
           <div style="border-top: 1px solid black; margin: 8px 0;"></div>
-          
+
           <table style="width: 100%; text-align: left; font-size: 13px; border-collapse: collapse;">
             <tr>
               <th style="font-weight: normal; padding-bottom: 4px;">Item</th>
@@ -1248,7 +2024,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
               <th style="font-weight: normal; text-align: right; padding-bottom: 4px;">Amount</th>
             </tr>
             <tr><td colspan="4" style="border-top: 1px solid black; margin: 8px 0;"></td></tr>
-        `;
+            `;
       for (let item of orderData.items) {
         printContent += `<tr>
              <td style="padding-top: 4px;">${item.name}</td>
@@ -1259,9 +2035,9 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
       }
       printContent += `
           </table>
-          
+
           <div style="border-top: 1px solid black; margin: 8px 0;"></div>
-          
+
           <div style="display: flex; font-size: 13px; text-align: right;">
             <div style="flex: 3; padding-right: 15px;">
               <div style="margin-bottom: 15px;">Total Qty: ${totalQty}</div>
@@ -1271,61 +2047,64 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
               ` : ''}
             </div>
             <div style="flex: 2; display: flex;">
-               <div style="flex: 1; text-align: left;">
-                 <div>Sub</div>
-                 <div>Total</div>
-               </div>
-               <div style="flex: 1.5; text-align: right;">
-                 <div style="margin-bottom: 15px;"><br>${(orderData.subtotal || 0).toFixed(2)}</div>
-                 ${orderData.serviceCharge > 0 ? `
+              <div style="flex: 1; text-align: left;">
+                <div>Sub</div>
+                <div>Total</div>
+              </div>
+              <div style="flex: 1.5; text-align: right;">
+                <div style="margin-bottom: 15px;"><br>${(orderData.subtotal || 0).toFixed(2)}</div>
+                ${orderData.serviceCharge > 0 ? `
                  <div>${(orderData.serviceCharge || 0).toFixed(2)}</div>
                  ` : ''}
-               </div>
+              </div>
             </div>
           </div>
-          
+
           <div style="border-top: 1px solid black; margin: 8px 0;"></div>
-          
+
           <div style="display: flex; justify-content: flex-end; font-size: 12px; margin-bottom: 4px;">
             <div style="margin-right: 15px;">Round off</div>
             <div>${orderData.roundOff > 0 ? '+' : ''}${(orderData.roundOff || 0).toFixed(2)}</div>
           </div>
-          
+
           <div style="display: flex; justify-content: flex-end; align-items: center;">
             <div style="font-size: 15px; font-weight: bold; margin-right: 15px;">Grand Total</div>
             <div style="font-size: 16px; font-weight: bold;">₹${(orderData.grandTotal || 0).toFixed(2)}</div>
           </div>
-          
+
           <div style="border-top: 1px solid black; margin: 8px 0;"></div>
-          
+
           <div style="font-size: 13px; margin-top: 4px;">${settings.billFooter || 'Sea you soon &mdash; under the moon'}</div>
-        `;
+          `;
 
     } else { // KOT
       let groupsToPrint = [];
 
-      if (settings.categorizedKOT) {
-        const categoriesToPrint = [...new Set(orderData.items.map(i => i.cat))];
-        groupsToPrint = categoriesToPrint.map(cat => ({
-          title: `Cat: ${cat}`,
-          items: orderData.items.filter(i => i.cat === cat)
-        }));
-      } else if (settings.separatePrintCategories && settings.separatePrintCategories.length > 0) {
-        const separateCats = settings.separatePrintCategories;
+      if (settings.printerStations && settings.printerStations.length > 0) {
+        // Station logic
         const mainItems = [];
-        const separatedGroups = {};
+        const stationsMap = {}; // stationName -> items
 
         orderData.items.forEach(item => {
-          if (separateCats.includes(item.cat)) {
-            if (!separatedGroups[item.cat]) separatedGroups[item.cat] = [];
-            separatedGroups[item.cat].push(item);
+          let assignedStation = null;
+          for (const st of settings.printerStations) {
+            if (st.categories.includes(item.cat)) {
+              assignedStation = st.name;
+              break;
+            }
+          }
+
+          if (assignedStation) {
+            if (!stationsMap[assignedStation]) stationsMap[assignedStation] = [];
+            stationsMap[assignedStation].push(item);
           } else {
             mainItems.push(item);
           }
         });
 
-        Object.entries(separatedGroups).forEach(([cat, items]) => {
-          groupsToPrint.push({ title: `${cat}`, items });
+        // Push separated groups
+        Object.entries(stationsMap).forEach(([stName, items]) => {
+          groupsToPrint.push({ title: `Station: ${stName}`, items });
         });
 
         if (mainItems.length > 0) {
@@ -1342,7 +2121,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         printContent += `
           <div style="${i < groupsToPrint.length - 1 ? 'page-break-after: always; margin-bottom: 20px;' : ''}">
             <div style="font-size: 14px; font-weight: bold;">${dateStr} ${timeStr}</div>
-            <h2 style="margin: 5px 0; font-size: 22px; font-weight: 900;">KOT - ${Math.floor(1 + Math.random() * 99)}</h2>
+            <h2 style="margin: 5px 0; font-size: 22px; font-weight: 900;">KOT - ${formattedSeq}</h2>
             <div style="font-size: 16px; font-weight: bold;">${orderData.orderType || 'Dine In'}</div>
             <div style="font-size: 16px; font-weight: bold;">Table No: ${orderData.tableName}</div>
             <div>--------------------------------</div>
@@ -1352,7 +2131,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
                 <th style="text-align: right;">Qty</th>
               </tr>
               <tr><td colspan="2">--------------------------------</td></tr>
-          `;
+              `;
         for (let item of group.items) {
           printContent += `<tr>
                <td style="padding-top: 6px;">
@@ -1366,7 +2145,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
             </table>
             <div>--------------------------------</div>
           </div>
-        `;
+          `;
       }
     }
 
@@ -1389,15 +2168,15 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
       <html>
         <head>
           <style>
-             @page { margin: 0; }
-             body { margin: 0; padding: 4mm; }
+            @page {margin: 0; }
+            body {margin: 0; padding: 4mm; }
           </style>
         </head>
         <body>
           ${printContent}
         </body>
       </html>
-    `);
+      `);
     frameDoc.close();
 
     // Focus and print the iframe
@@ -1412,7 +2191,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
 };
 
 
-const OrderingSystem = ({ table, tables, initialOrder, onBack, onSaveOrder, onSettleTable, onChangeTable, MENU_ITEMS, CATEGORIES, customers }) => {
+const OrderingSystem = ({ table, tables, nonTableOrders, initialOrder, onBack, onSaveOrder, onSettleTable, onChangeTable, MENU_ITEMS, CATEGORIES, customers, settings }) => {
   const [cart, setCart] = useState(initialOrder || []);
   const [activeCat, setActiveCat] = useState("Quick Snack's");
   const [searchQuery, setSearchQuery] = useState('');
@@ -1430,6 +2209,10 @@ const OrderingSystem = ({ table, tables, initialOrder, onBack, onSaveOrder, onSe
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setCustomerInfo(customers[customerPhone]);
       setCustomerName(customers[customerPhone].name);
+    } else if (table?.customerName || table?.phone) {
+      setCustomerName(table.customerName || '');
+      setCustomerPhone(table.phone || '');
+      setCustomerInfo(null);
     } else {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setCustomerInfo(null);
@@ -1443,17 +2226,16 @@ const OrderingSystem = ({ table, tables, initialOrder, onBack, onSaveOrder, onSe
   const [customNoteText, setCustomNoteText] = useState('');
 
   // Service Charge & Discount State
-  const [applyServiceCharge, setApplyServiceCharge] = useState(true);
-  const [serviceChargeRate, setServiceChargeRate] = useState(5);
+  const [applyServiceCharge, setApplyServiceCharge] = useState(settings?.autoServiceCharge ?? true);
+  const [serviceChargeRate, setServiceChargeRate] = useState(settings?.serviceChargeRate ?? 5);
 
   const [applyDiscount, setApplyDiscount] = useState(false);
   const [discountRate, setDiscountRate] = useState(10);
-  const discountAuth = applyDiscount ? 'Toggle' : '';
-
-  const [paymentMethod, setPaymentMethod] = useState('Cash');
-  const [isPaid, setIsPaid] = useState(false);
   const [splitWays, setSplitWays] = useState(1);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [discountAuth, setDiscountAuth] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [isPaid, setIsPaid] = useState(false);
 
   // Calculations
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
@@ -1463,6 +2245,29 @@ const OrderingSystem = ({ table, tables, initialOrder, onBack, onSaveOrder, onSe
   const rawTotal = taxableAmount + serviceCharge;
   const grandTotal = Math.round(rawTotal);
   const roundOff = grandTotal - rawTotal;
+
+  // Calculate globally reserved stock (qty already in other running tables/orders)
+  // This satisfies the "live update" requirement so punched orders reflect immediately across the floor.
+  const getReservedStock = (itemId) => {
+    let reserved = 0;
+    // Check all tables
+    (tables || []).forEach(t => {
+      if (t.id !== table?.id) { // Skip current table
+        (t.order || []).forEach(i => {
+          if (i.id === itemId) reserved += i.qty;
+        });
+      }
+    });
+    // Check all non-table orders (takeaways, deliveries, online)
+    (nonTableOrders || []).forEach(o => {
+      if (o.id !== table?.id) { // Skip current takeaway/delivery if editing one
+        (o.order || []).forEach(i => {
+          if (i.id === itemId) reserved += i.qty;
+        });
+      }
+    });
+    return reserved;
+  };
 
   const handleItemClick = (item) => {
     if (!item.inStock) return;
@@ -1474,6 +2279,17 @@ const OrderingSystem = ({ table, tables, initialOrder, onBack, onSaveOrder, onSe
   };
 
   const addToCart = (item, selectedModifier = null) => {
+    if (item.type === 'retail') {
+      const currentCartQty = cart.reduce((acc, c) => c.id === item.id ? acc + c.qty : acc, 0);
+      const otherReservedQty = getReservedStock(item.id);
+      const totalAvailable = item.stockQuantity - otherReservedQty;
+
+      if (currentCartQty >= totalAvailable) {
+        alert(`Cannot add more. Only ${totalAvailable} units available across all active orders.`);
+        return;
+      }
+    }
+
     setCart(prev => {
       // If item has a specific price modifier like (+₹30), parse and add it
       let finalPrice = item.price;
@@ -1498,6 +2314,20 @@ const OrderingSystem = ({ table, tables, initialOrder, onBack, onSaveOrder, onSe
   };
 
   const updateQty = (cartItemId, delta) => {
+    if (delta > 0) {
+      const cartItem = cart.find(i => i.cartItemId === cartItemId);
+      if (cartItem && cartItem.type === 'retail') {
+        const currentCartQty = cart.reduce((acc, c) => c.id === cartItem.id ? acc + c.qty : acc, 0);
+        const otherReservedQty = getReservedStock(cartItem.id);
+        const totalAvailable = cartItem.stockQuantity - otherReservedQty;
+
+        if (currentCartQty >= totalAvailable) {
+          alert(`Cannot add more. Only ${totalAvailable} units available across all active orders.`);
+          return;
+        }
+      }
+    }
+
     setCart(prev => {
       return prev.map(i => {
         if (i.cartItemId === cartItemId) {
@@ -1516,11 +2346,6 @@ const OrderingSystem = ({ table, tables, initialOrder, onBack, onSaveOrder, onSe
     const isPrint = actionType.includes('Print');
     const isBill = actionType === 'Print Bill' || actionType.includes('Bill');
     const newStatus = isKOT ? 'kot' : isPrint ? 'printed' : 'running';
-
-    if (isPickup && (!customerName || customerPhone.length < 10)) {
-      alert("Customer Name and valid 10-digit Phone Number are required for pickup orders.");
-      return;
-    }
 
     if (isKOT) {
       updatedCart = cart.map(item => {
@@ -1547,12 +2372,14 @@ const OrderingSystem = ({ table, tables, initialOrder, onBack, onSaveOrder, onSe
     } else {
       // Just save order state
       setCart(updatedCart); // update local state so diff tracking is consistent
-      onSaveOrder(table.id, updatedCart, newStatus);
+      onSaveOrder(table.id, updatedCart, newStatus, { customerName, customerPhone, note: orderNote });
     }
 
     if (isPrint) {
       await printPosToSerial({
         tableName: table?.name || 'Walk-In',
+        customerName: customerName,
+        customerPhone: customerPhone,
         items: itemsToPrint,
         subtotal: subtotal,
         serviceCharge: serviceCharge,
@@ -1572,29 +2399,7 @@ const OrderingSystem = ({ table, tables, initialOrder, onBack, onSaveOrder, onSe
     <div className="animate-fade-in" style={{ flex: 1, display: 'flex', background: '#f3f4f6', position: 'relative' }}>
 
       {/* Category Sidebar */}
-      <div className="menu-sidebar no-print no-scrollbar">
-        {isPickup && (
-          <div style={{ padding: '12px', background: '#fffbeb', borderBottom: '1px solid #fde68a', marginBottom: '10px', borderRadius: '8px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#92400e', marginBottom: '8px', textTransform: 'uppercase' }}>Customer Details *</div>
-            <input
-              type="text"
-              placeholder="Name"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              style={{ width: '100%', padding: '8px', fontSize: '12px', border: '1px solid #fcd34d', borderRadius: '4px', marginBottom: '8px', outline: 'none' }}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Phone"
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              style={{ width: '100%', padding: '8px', fontSize: '12px', border: '1px solid #fcd34d', borderRadius: '4px', outline: 'none' }}
-              maxLength="10"
-              required
-            />
-          </div>
-        )}
+      <div className="menu-sidebar no-print">
         {CATEGORIES.map(cat => (
           <button
             key={cat}
@@ -1623,26 +2428,42 @@ const OrderingSystem = ({ table, tables, initialOrder, onBack, onSaveOrder, onSe
         </div>
 
         <div className="items-grid no-scrollbar" style={{ overflowY: 'auto', flex: 1, background: '#f3f4f6' }}>
-          {filteredItems.map(item => (
-            <div
-              key={item.id}
-              className={`item-card ${item.type}`}
-              onClick={() => handleItemClick(item)}
-              style={{
-                background: 'white',
-                opacity: item.inStock ? 1 : 0.5,
-                cursor: item.inStock ? 'pointer' : 'not-allowed'
-              }}
-            >
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                {item.name} {item.modifiers && <span style={{ color: '#94161c', fontSize: '10px' }}>*</span>}
+          {filteredItems.map(item => {
+            const isRetail = item.type === 'retail';
+            let liveStock = null;
+            let isAvailable = item.inStock;
+
+            if (isRetail) {
+              const cartQty = cart.reduce((acc, c) => c.id === item.id ? acc + c.qty : acc, 0);
+              const otherReserved = getReservedStock(item.id);
+              liveStock = item.stockQuantity - otherReserved - cartQty;
+              isAvailable = liveStock > 0;
+            }
+
+            return (
+              <div
+                key={item.id}
+                className={`item-card ${item.type}`}
+                onClick={() => {
+                  if (isAvailable || !isRetail) handleItemClick(item);
+                }}
+                style={{
+                  background: 'white',
+                  opacity: isAvailable ? 1 : 0.5,
+                  cursor: isAvailable ? 'pointer' : 'not-allowed'
+                }}
+              >
+                <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                  {item.name} {item.modifiers && <span style={{ color: '#94161c', fontSize: '10px' }}>*</span>}
+                  {isRetail && <span style={{ marginLeft: '6px', background: '#3b82f6', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '9px' }}>Stock: {liveStock}</span>}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold' }}>₹{item.price}</div>
+                  {!isAvailable && <div style={{ fontSize: '10px', color: 'red', fontWeight: 'bold' }}>Out of Stock</div>}
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                <div style={{ fontSize: '12px', fontWeight: 'bold' }}>₹{item.price}</div>
-                {!item.inStock && <div style={{ fontSize: '10px', color: 'red', fontWeight: 'bold' }}>Out of Stock</div>}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -1682,21 +2503,47 @@ const OrderingSystem = ({ table, tables, initialOrder, onBack, onSaveOrder, onSe
           </div>
         </div>
 
-        {/* --- CRM SECTION (Only for Dine-in as Pickup has it in sidebar) --- */}
-        {!isPickup && (
-          <div style={{ padding: '8px 12px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-              <input type="text" placeholder="Phone 10-digit" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ flex: 1, padding: '6px', fontSize: '12px', border: `1px solid ${customerPhone.length === 10 ? '#10b981' : '#d1d5db'}`, borderRadius: '4px', outline: 'none' }} maxLength="10" />
-              <input type="text" placeholder="Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ flex: 1, padding: '6px', fontSize: '12px', border: '1px solid #d1d5db', borderRadius: '4px', outline: 'none' }} />
+        {/* --- CRM & CUSTOMER INFO SECTION --- */}
+        <div style={{ padding: '10px 12px', background: isPickup ? '#faf5ff' : '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: (customerInfo || isPickup) ? '8px' : '0' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '9px', fontWeight: 'bold', color: isPickup ? 'var(--secondary)' : '#64748b', marginBottom: '2px' }}>CUSTOMER NAME (Optional)</label>
+              <input
+                type="text"
+                placeholder="Walk-In"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                style={{ width: '100%', padding: '8px', fontSize: '12px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', background: 'white' }}
+              />
             </div>
-            {customerInfo && (
-              <div style={{ padding: '6px 8px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '4px', fontSize: '11px', color: '#065f46', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Welcome back! (Visits: {customerInfo.visits})</span>
-                <span style={{ fontWeight: 'bold' }}>{customerInfo.points} Loyalty Pts</span>
-              </div>
-            )}
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '9px', fontWeight: 'bold', color: isPickup ? 'var(--secondary)' : '#64748b', marginBottom: '2px' }}>PHONE NUMBER (Optional)</label>
+              <input
+                type="text"
+                placeholder="Mobile number"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                style={{ width: '100%', padding: '8px', fontSize: '12px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', background: 'white' }}
+                maxLength="10"
+              />
+            </div>
           </div>
-        )}
+
+          {customerInfo && (
+            <div style={{ padding: '6px 10px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px', fontSize: '11px', color: '#065f46', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <User size={12} />
+                <span>Visit #{customerInfo.visits}</span>
+              </div>
+              <span style={{ fontWeight: 'bold' }}>{customerInfo.points} Pts</span>
+            </div>
+          )}
+          {isPickup && (!customerName || customerPhone.length < 10) && (
+            <div style={{ fontSize: '10px', color: '#dc2626', fontWeight: 'bold', marginTop: '4px' }}>
+              ⚠ Required for pickup orders
+            </div>
+          )}
+        </div>
         {/* --- END CRM SECTION --- */}
 
         <div style={{ padding: '8px 12px', display: 'flex', fontSize: '10px', fontWeight: 'bold', color: '#9ca3af', borderBottom: '1px solid #e5e7eb' }}>
@@ -2200,7 +3047,6 @@ const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
 /* --- DAY CLOSE WIZARD --- */
 const DayCloseWizard = ({ orderHistory, onCompleteDayClose }) => {
   const [cashCount, setCashCount] = useState('');
-  const [managerPin, setManagerPin] = useState('');
   const [isCompleted, setIsCompleted] = useState(false);
 
   const payments = { Cash: 0, Card: 0, UPI: 0 };
@@ -2215,10 +3061,6 @@ const DayCloseWizard = ({ orderHistory, onCompleteDayClose }) => {
   const cashDifference = parseFloat(cashCount || 0) - payments.Cash;
 
   const handleClose = () => {
-    if (managerPin !== '9999') {
-      alert("Invalid Manager PIN. Day Close aborted.");
-      return;
-    }
     if (cashCount === '') {
       alert("Please enter the physical cash counted in the drawer.");
       return;
@@ -2308,16 +3150,6 @@ const DayCloseWizard = ({ orderHistory, onCompleteDayClose }) => {
             </div>
           )}
 
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Manager Authorization PIN</label>
-            <input
-              type="password"
-              value={managerPin}
-              onChange={(e) => setManagerPin(e.target.value)}
-              placeholder="Enter PIN (e.g. 9999)"
-              style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', outline: 'none' }}
-            />
-          </div>
         </div>
 
         <button
@@ -2332,17 +3164,112 @@ const DayCloseWizard = ({ orderHistory, onCompleteDayClose }) => {
   );
 };
 
+
+const TimeElapsed = ({ createdAt }) => {
+  const [elapsed, setElapsed] = React.useState(0);
+  React.useEffect(() => {
+    if (!createdAt) return;
+    const update = () => {
+      const diff = Math.floor((Date.now() - createdAt) / 60000);
+      setElapsed(diff);
+    };
+    update();
+    const inv = setInterval(update, 60000);
+    return () => clearInterval(inv);
+  }, [createdAt]);
+
+  if (!createdAt) return null;
+  return <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold' }}>{elapsed}m ago</div>;
+};
+
+const QuickSettleModal = ({ table, settings, onClose, onSettle }) => {
+  const [method, setMethod] = React.useState('Cash');
+  if (!table) return null;
+
+  const subtotal = table.order.reduce((acc, i) => acc + (i.price * i.qty), 0);
+  const service = settings?.autoServiceCharge ? Math.floor(subtotal * (settings.serviceChargeRate || 5) / 100) : 0;
+  const grandTotal = subtotal + service;
+
+  const [amountPaidStr, setAmountPaidStr] = React.useState('');
+  const amountPaid = parseFloat(amountPaidStr) || 0;
+  const changeDue = amountPaid > grandTotal ? amountPaid - grandTotal : 0;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+      <div className="animate-fade-in" style={{ background: 'white', padding: '28px', borderRadius: '12px', width: '360px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+        <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>Settle: {table.name}</h3>
+        <div style={{ fontSize: '24px', fontWeight: '900', color: 'var(--primary)', marginBottom: '20px' }}>₹{grandTotal}</div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '24px' }}>
+          {['Cash', 'Card', 'UPI'].map(m => (
+            <button
+              key={m}
+              onClick={() => setMethod(m)}
+              style={{ padding: '12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', border: `2px solid ${method === m ? 'var(--primary)' : '#e2e8f0'}`, background: method === m ? 'var(--primary)10' : 'white', color: method === m ? 'var(--primary)' : '#64748b', cursor: 'pointer' }}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Amount Paid by Customer (₹)</label>
+          <input
+            type="number"
+            value={amountPaidStr}
+            onChange={(e) => setAmountPaidStr(e.target.value)}
+            placeholder={`e.g. ${grandTotal}`}
+            style={{ boxSizing: 'border-box', width: '100%', padding: '12px', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '16px', fontWeight: 'bold', outline: 'none' }}
+          />
+          {amountPaid >= grandTotal && (
+            <div style={{ marginTop: '8px', fontSize: '14px', fontWeight: 'bold', color: '#10b981' }}>
+              Change to Return: ₹{changeDue}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '12px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Cancel</button>
+          <button onClick={() => onSettle(method, amountPaid, changeDue)} style={{ flex: 1, padding: '12px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Settle Bill</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [view, setView] = useState('tables');
   const [selectedTable, setSelectedTable] = useState(null);
+  const [quickSettleTable, setQuickSettleTable] = useState(null);
 
   // PERSISTENCE LOGIC (IndexedDB based)
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [tables, setTables] = useState(INITIAL_TABLES);
   const [orderHistory, setOrderHistory] = useState([]);
   const [nonTableOrders, setNonTableOrders] = useState([]);
-  const [printerSettings, setPrinterSettings] = useState({ billHeader: 'TYDE CAFE', billFooter: 'Thank You for Visiting!', categorizedKOT: false, billLayout: 'standard', printFontFamily: 'Helvetica, Arial, sans-serif', printFontSize: '13', printFontWeight: 'normal' });
+  const [settings, setSettings] = useState({
+    billHeader: 'TYDE CAFE',
+    billFooter: 'Thank You for Visiting!',
+    categorizedKOT: false,
+    billLayout: 'standard',
+    printFontFamily: 'Helvetica, Arial, sans-serif',
+    printFontSize: '13',
+    printFontWeight: 'normal',
+    accentColor: '#a3112a',
+    secondaryColor: '#7c3aed',
+    bgColor: '#f9fafb',
+    textColor: '#1f2937',
+    borderRadius: '12',
+    tableShape: 'rounded',
+    globalFont: 'Outfit',
+    fontBaseSize: '14',
+    fontBaseWeight: 'normal',
+    autoServiceCharge: true,
+    serviceChargeRate: 5
+  });
   const [menuItems, setMenuItems] = useState(INITIAL_MENU_ITEMS);
+  const [products, setProducts] = useState([...INITIAL_PRODUCTS]);
+  const [productCategories, setProductCategories] = useState([...INITIAL_PRODUCT_CATEGORIES]);
   const [categories, setCategories] = useState(INITIAL_CATEGORIES);
   const [floorPlanSections, setFloorPlanSections] = useState(INITIAL_FLOOR_SECTIONS);
   const [customers, setCustomers] = useState({});
@@ -2360,7 +3287,7 @@ export default function App() {
         if (savedNonTable) setNonTableOrders(savedNonTable);
 
         const savedSettings = await get('pos_printer_settings');
-        if (savedSettings) setPrinterSettings(savedSettings);
+        if (savedSettings) setSettings(prev => ({ ...prev, ...savedSettings }));
 
         const savedCustomers = await get('pos_customers');
         if (savedCustomers) setCustomers(savedCustomers);
@@ -2371,6 +3298,10 @@ export default function App() {
           if (savedMenuItems) setMenuItems(savedMenuItems);
 
           const savedCategories = await get('pos_categories');
+          const savedProducts = await get('pos_retail_products');
+          const savedProductCats = await get('pos_retail_categories');
+          if (savedProducts) setProducts(savedProducts);
+          if (savedProductCats) setProductCategories(savedProductCats);
           if (savedCategories) setCategories(savedCategories);
 
           const savedSections = await get('pos_floor_sections');
@@ -2406,8 +3337,8 @@ export default function App() {
   }, [nonTableOrders, isDbLoaded]);
 
   useEffect(() => {
-    if (isDbLoaded) set('pos_printer_settings', printerSettings);
-  }, [printerSettings, isDbLoaded]);
+    if (isDbLoaded) set('pos_printer_settings', settings);
+  }, [settings, isDbLoaded]);
 
   useEffect(() => {
     if (isDbLoaded) set('pos_menu_items', menuItems);
@@ -2415,6 +3346,8 @@ export default function App() {
 
   useEffect(() => {
     if (isDbLoaded) set('pos_categories', categories);
+    if (isDbLoaded) set('pos_retail_products', products);
+    if (isDbLoaded) set('pos_retail_categories', productCategories);
   }, [categories, isDbLoaded]);
 
   useEffect(() => {
@@ -2454,7 +3387,8 @@ export default function App() {
       status: 'blank', // Will turn 'running' when items added
       type: type,
       order: [],
-      phone: ''
+      phone: '',
+      createdAt: Date.now()
     };
     setNonTableOrders(prev => [...prev, newOrder]);
     setSelectedTable(newOrder); // Using selectedTable state for both tables & nontables uniformly
@@ -2474,19 +3408,20 @@ export default function App() {
         { ...(menuItems.find(i => i.price > 100) || menuItems[0]), qty: 1, cartItemId: 'agg1', printedQty: 0 },
         { ...(menuItems.find(i => i.price < 200) || menuItems[1]), qty: 2, cartItemId: 'agg2', printedQty: 0 }
       ],
-      phone: ''
+      phone: '',
+      createdAt: Date.now()
     };
     setNonTableOrders(prev => [...prev, newOrder]);
     alert(`Incoming automated ${type} order received through Live Sync!`);
   };
 
-  const saveOrderToTable = (tableId, orderItems, newStatus) => {
-    if (String(tableId).startsWith('DEL-') || String(tableId).startsWith('TAK-')) {
+  const saveOrderToTable = (tableId, orderItems, newStatus, extraData = {}) => {
+    if (String(tableId).startsWith('DEL-') || String(tableId).startsWith('TAK-') || String(tableId).startsWith('ZOMATO-') || String(tableId).startsWith('SWIGGY-') || String(tableId).startsWith('THRIVE-')) {
       setNonTableOrders(prev => {
         const existing = prev.find(o => o.id === tableId);
         if (existing) {
           if (orderItems.length === 0) return prev.filter(o => o.id !== tableId);
-          return prev.map(o => o.id === tableId ? { ...o, order: orderItems, status: newStatus } : o);
+          return prev.map(o => o.id === tableId ? { ...o, order: orderItems, status: newStatus, customerName: extraData.customerName, phone: extraData.customerPhone, note: extraData.note, createdAt: o.createdAt || Date.now() } : o);
         }
         return prev;
       });
@@ -2494,20 +3429,29 @@ export default function App() {
     } else {
       setTables(prev => prev.map(t => {
         if (t.id === tableId) {
-          return {
-            ...t,
-            order: orderItems,
-            status: orderItems.length === 0 ? 'blank' : newStatus
-          };
+          return { ...t, order: orderItems, status: newStatus, customerName: extraData.customerName, phone: extraData.customerPhone, note: extraData.note, createdAt: t.createdAt || Date.now() };
         }
         return t;
       }));
+      setSelectedTable(null);
       setView('tables');
     }
-    setSelectedTable(null);
   };
 
   const settleTable = (tableId, orderDetails) => {
+    if (orderDetails && orderDetails.cart) {
+      setProducts(prev => {
+        let updated = [...prev];
+        orderDetails.cart.forEach(cartItem => {
+          const pIndex = updated.findIndex(p => p.id === cartItem.id && p.type === 'retail');
+          if (pIndex !== -1) {
+            const newQty = Math.max(0, updated[pIndex].stockQuantity - cartItem.qty);
+            updated[pIndex] = { ...updated[pIndex], stockQuantity: newQty, inStock: newQty > 0 };
+          }
+        });
+        return updated;
+      });
+    }
     if (orderDetails && orderDetails.phone) {
       setCustomers(prev => {
         const ph = orderDetails.phone;
@@ -2548,16 +3492,50 @@ export default function App() {
     setView('kds')
   };
 
+  const handleQuickPrint = async (table) => {
+    const subtotal = table.order.reduce((acc, i) => acc + (i.price * i.qty), 0);
+    const serviceCharge = (settings?.autoServiceCharge) ? Math.floor(subtotal * (settings?.serviceChargeRate || 5) / 100) : 0;
+    const grandTotal = subtotal + serviceCharge;
+    await printPosToSerial({
+      table: table.name || table.id,
+      items: table.order,
+      subtotal,
+      grandTotal,
+      discountAmt: 0,
+      taxes: serviceCharge,
+      timestamp: new Date().toLocaleTimeString(),
+      customerName: table.customerName || 'Walk-In',
+      customerPhone: table.phone || '',
+      note: table.note || ''
+    }, 'BILL');
+  };
+
   return (
     <div className="app-container">
+      <GlobalStyles settings={settings} />
       <TopHeader onViewChange={setView} onSimulateAggregator={handleSimulateAggregator} />
+
+      {quickSettleTable && (
+        <QuickSettleModal
+          table={quickSettleTable}
+          settings={settings}
+          onClose={() => setQuickSettleTable(null)}
+          onSettle={(paymentMethod, amountPaid, changeDue) => {
+            const subtotal = quickSettleTable.order.reduce((acc, i) => acc + (i.price * i.qty), 0);
+            const service = settings?.autoServiceCharge ? Math.floor(subtotal * (settings.serviceChargeRate || 5) / 100) : 0;
+            const grandTotal = subtotal + service;
+            settleTable(quickSettleTable.id, { cart: quickSettleTable.order, subtotal, discountAmt: 0, redeemedPoints: 0, discountAuth: false, taxes: service, grandTotal, paymentMethod, amountPaid, changeDue, timestamp: new Date().toISOString(), phone: quickSettleTable.phone, customerName: quickSettleTable.customerName, note: quickSettleTable.note });
+            setQuickSettleTable(null);
+          }}
+        />
+      )}
 
       <main style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {view === 'tables' && (
-          <TableManagement tables={tables} floorPlanSections={floorPlanSections} onSelectTable={handleSelectTable} onClearTable={clearTableFast} />
+          <TableManagement tables={tables} floorPlanSections={floorPlanSections} onSelectTable={handleSelectTable} onClearTable={clearTableFast} settings={settings} onQuickSettle={setQuickSettleTable} onQuickPrint={handleQuickPrint} />
         )}
         {view === 'nontables' && (
-          <NonTableManagement orders={nonTableOrders} onSelectOrder={handleSelectTable} onCreateOrder={handleCreateNonTableOrder} />
+          <NonTableManagement orders={nonTableOrders} onSelectOrder={handleSelectTable} onCreateOrder={handleCreateNonTableOrder} onViewChange={setView} onQuickSettle={setQuickSettleTable} onQuickPrint={handleQuickPrint} />
         )}
         {view === 'analytics' && (
           <AnalyticsDashboard orderHistory={orderHistory} menuItems={menuItems} />
@@ -2575,15 +3553,24 @@ export default function App() {
           <KitchenDisplay tables={tables} nonTableOrders={nonTableOrders} onMarkReady={markOrderReady} />
         )}
         {view === 'orderhistory' && (
-          <OrderHistoryView orderHistory={orderHistory} />
+          <OrderHistoryView orderHistory={orderHistory} activePickups={nonTableOrders} onSelectActive={handleSelectTable} />
+        )}
+        {view === 'globalsettings' && (
+          <GlobalSettingsView settings={settings} onSaveSettings={setSettings} />
         )}
         {view === 'printersettings' && (
-          <PrinterSettingsView settings={printerSettings} onSaveSettings={setPrinterSettings} categories={categories} />
+          <PrinterSettingsView settings={settings} onSaveSettings={setSettings} categories={categories} />
         )}
         {view === 'menusetup' && (
           <MenuSetupView
             categories={categories} setCategories={setCategories}
             menuItems={menuItems} setMenuItems={setMenuItems}
+          />
+        )}
+        {view === 'productsetup' && (
+          <RetailProductSetupView
+            categories={productCategories} setCategories={setProductCategories}
+            menuItems={products} setMenuItems={setProducts}
           />
         )}
         {view === 'floorplan' && (
@@ -2593,16 +3580,18 @@ export default function App() {
           <OrderingSystem
             table={selectedTable}
             tables={tables}
+            nonTableOrders={nonTableOrders}
             initialOrder={selectedTable?.order || []}
-            MENU_ITEMS={menuItems}
-            CATEGORIES={categories}
+            MENU_ITEMS={[...menuItems, ...products]}
+            CATEGORIES={[...categories, ...productCategories]}
+            settings={settings}
             customers={customers}
             onChangeTable={(oldId, newId, currentCart) => {
               if (selectedTable && oldId !== newId) {
                 const targetTable = tables.find(t => t.id === newId);
                 if (targetTable) {
                   setTables(prev => prev.map(t => {
-                    if (t.id === newId) return { ...t, order: currentCart, status: 'running' };
+                    if (t.id === newId) return { ...t, order: currentCart, status: 'running', createdAt: t.createdAt || Date.now() };
                     if (t.id === oldId) return { ...t, order: [], status: 'blank' };
                     return t;
                   }));
