@@ -3675,7 +3675,7 @@ export default function App() {
             nonTableOrders={nonTableOrders}
             initialOrder={selectedTable?.order || []}
             MENU_ITEMS={[...menuItems, ...products]}
-            CATEGORIES={[...categories, ...productCategories]}
+            CATEGORIES={Array.from(new Set([...categories, ...productCategories]))}
             settings={settings}
             customers={customers}
             onChangeTable={(oldId, newId, currentCart) => {
