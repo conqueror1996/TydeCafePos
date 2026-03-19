@@ -1915,6 +1915,8 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         await wT(`KOT - #${formattedSeq}\n`);
         await wT(`${orderData.orderType || 'Dine In'}\n`);
         await wT(`Table No: ${orderData.tableName}\n`);
+        if (orderData.orderId) await wT(`Order No: ${orderData.orderId}\n`);
+        if (orderData.customerName) await wT(`Customer Name: ${orderData.customerName}\n`);
         await wT("--------------------------------\n");
 
         await w(leftAlign);
@@ -2024,6 +2026,8 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
 
         await wT(`${orderData.orderType || 'Dine In'}\n`);
         await wT(`Table No: ${orderData.tableName}\n`);
+        if (orderData.orderId) await wT(`Order No: ${orderData.orderId}\n`);
+        if (orderData.customerName) await wT(`Customer Name: ${orderData.customerName}\n`);
         if (settings.billLayout === 'bold') await w(boldOff);
 
         if (settings.billLayout !== 'minimal') {
@@ -2235,6 +2239,8 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
             <h2 style="margin: 5px 0; font-size: 22px; font-weight: 900;">KOT - ${formattedSeq}</h2>
             <div style="font-size: 16px; font-weight: bold;">${orderData.orderType || 'Dine In'}</div>
             <div style="font-size: 16px; font-weight: bold;">Table No: ${orderData.tableName}</div>
+            ${orderData.orderId ? `<div style="font-size: 16px; font-weight: bold;">Order No: ${orderData.orderId}</div>` : ''}
+            ${orderData.customerName ? `<div style="font-size: 16px; font-weight: bold;">Customer Name: ${orderData.customerName}</div>` : ''}
             <div>--------------------------------</div>
             <table style="width: 100%; text-align: left; font-size: 16px; font-weight: bold;">
               <tr>
@@ -2470,8 +2476,12 @@ const OrderingSystem = ({ table, tables, nonTableOrders, initialOrder, onBack, o
       });
 
       if (isPrint && !isBill && itemsToPrint.length === 0) {
-        alert("No new items to print for KOT.");
-        return;
+        if (actionType === 'KOT & Print') {
+          itemsToPrint = cart.map(item => ({ ...item }));
+        } else {
+          alert("No new items to print for KOT.");
+          return;
+        }
       }
     } else if (isBill) {
       itemsToPrint = cart;
@@ -2488,6 +2498,7 @@ const OrderingSystem = ({ table, tables, nonTableOrders, initialOrder, onBack, o
 
     if (isPrint) {
       await printPosToSerial({
+        orderId: table?.id,
         tableName: table?.name || 'Walk-In',
         customerName: customerName,
         customerPhone: customerPhone,
@@ -2916,8 +2927,39 @@ const OrderingSystem = ({ table, tables, nonTableOrders, initialOrder, onBack, o
 
 /* --- ANALYTICS DASHBOARD --- */
 const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
-  const totalSales = orderHistory.reduce((acc, order) => acc + order.grandTotal, 0);
-  const totalOrders = orderHistory.length;
+  const [dateFilter, setDateFilter] = useState('daily');
+  const [customStartDate, setCustomStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [customEndDate, setCustomEndDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const filteredHistory = orderHistory.filter(order => {
+    const orderDate = new Date(order.timestamp || Date.now());
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const orderDateNoTime = new Date(orderDate);
+    orderDateNoTime.setHours(0, 0, 0, 0);
+
+    if (dateFilter === 'daily') {
+      return orderDateNoTime.getTime() === today.getTime();
+    } else if (dateFilter === 'weekly') {
+      const lastWeek = new Date(today);
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      return orderDateNoTime >= lastWeek;
+    } else if (dateFilter === 'monthly') {
+      const lastMonth = new Date(today);
+      lastMonth.setMonth(lastMonth.getMonth() - 1);
+      return orderDateNoTime >= lastMonth;
+    } else if (dateFilter === 'custom') {
+      const start = new Date(customStartDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(customEndDate);
+      end.setHours(23, 59, 59, 999);
+      return orderDate >= start && orderDate <= end;
+    }
+    return true;
+  });
+
+  const totalSales = filteredHistory.reduce((acc, order) => acc + order.grandTotal, 0);
+  const totalOrders = filteredHistory.length;
   const avgBill = totalOrders > 0 ? (totalSales / totalOrders).toFixed(2) : '0.00';
 
   const payments = { Cash: 0, Card: 0, UPI: 0 };
@@ -2927,7 +2969,7 @@ const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
 
   let totalDiscounts = 0;
 
-  orderHistory.forEach(order => {
+  filteredHistory.forEach(order => {
     payments[order.paymentMethod] = (payments[order.paymentMethod] || 0) + order.grandTotal;
 
     // Tracking Discounts for Alerts
@@ -2953,7 +2995,7 @@ const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
     });
   });
 
-  const topItems = Object.values(itemsMap).sort((a, b) => b.qty - a.qty).slice(0, 5);
+  const topItems = Object.values(itemsMap).sort((a, b) => b.qty - a.qty);
   const topCategories = Object.entries(categories).sort((a, b) => b[1] - a[1]);
 
   // Prepare Chart Data
@@ -2983,7 +3025,7 @@ const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
     alerts.push(`Performance: "Chicken Lollipop" volume is lower than average moving velocity today.`);
   }
 
-  const discountLogs = orderHistory.filter(o => o.discountAmt > 0).map(o => ({
+  const discountLogs = filteredHistory.filter(o => o.discountAmt > 0).map(o => ({
     id: o.id,
     tableId: o.tableId,
     amount: o.discountAmt,
@@ -3019,7 +3061,7 @@ const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
     const wsCategory = XLSX.utils.json_to_sheet(categoryData);
     XLSX.utils.book_append_sheet(wb, wsCategory, "Category Sales");
 
-    XLSX.writeFile(wb, `Business_Performance_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, `Business_Performance_Report_${dateFilter}_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   return (
@@ -3028,16 +3070,30 @@ const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
         <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
           <BarChart3 size={20} color="#94161c" /> Business Analytics Data Hub
         </h2>
-        <button
-          onClick={handleExportSummary}
-          style={{
-            fontSize: '12px', fontWeight: '800', padding: '10px 20px', borderRadius: '10px',
-            background: '#94161c', color: 'white', border: 'none', cursor: 'pointer',
-            boxShadow: '0 4px 6px rgba(148, 22, 28, 0.2)', display: 'flex', alignItems: 'center', gap: '6px'
-          }}
-        >
-          <TrendingUp size={14} /> Download Summary Report (.xlsx)
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <select value={dateFilter} onChange={e => setDateFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #d1d5db', background: 'white', color: '#374151', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="custom">Custom Date</option>
+          </select>
+          {dateFilter === 'custom' && (
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid #d1d5db', color: '#374151', fontSize: '13px' }} />
+              <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid #d1d5db', color: '#374151', fontSize: '13px' }} />
+            </div>
+          )}
+          <button
+            onClick={handleExportSummary}
+            style={{
+              fontSize: '12px', fontWeight: '800', padding: '10px 20px', borderRadius: '10px',
+              background: '#94161c', color: 'white', border: 'none', cursor: 'pointer',
+              boxShadow: '0 4px 6px rgba(148, 22, 28, 0.2)', display: 'flex', alignItems: 'center', gap: '6px'
+            }}
+          >
+            <TrendingUp size={14} /> Download Summary Report (.xlsx)
+          </button>
+        </div>
       </div>
 
       {/* Smart Alerts Banner Area */}
@@ -3152,22 +3208,22 @@ const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
         {/* Top Items Table */}
-        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><TrendingUp size={16} color="#4b5563" /> Top Selling Items</h3>
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', maxHeight: '500px', overflowY: 'auto' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}><TrendingUp size={16} color="#4b5563" /> Item-wise Sales Report ({dateFilter})</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', fontSize: '11px', fontWeight: 'bold', color: '#9ca3af', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>
+            <div style={{ display: 'flex', fontSize: '11px', fontWeight: 'bold', color: '#9ca3af', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
               <span style={{ flex: 1 }}>ITEM</span>
               <span style={{ width: '40px', textAlign: 'center' }}>QTY</span>
-              <span style={{ width: '60px', textAlign: 'right' }}>REVENUE</span>
+              <span style={{ width: '80px', textAlign: 'right' }}>REVENUE</span>
             </div>
             {topItems.map((item, idx) => (
               <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #f3f4f6' }}>
                 <span style={{ flex: 1, fontSize: '13px', fontWeight: '500', color: '#1f2937' }}>{item.name}</span>
                 <span style={{ width: '40px', textAlign: 'center', fontSize: '13px', fontWeight: 'bold', color: '#4b5563', background: '#f3f4f6', borderRadius: '4px', padding: '2px 0' }}>{item.qty}</span>
-                <span style={{ width: '60px', textAlign: 'right', fontSize: '13px', fontWeight: 'bold', color: '#94161c' }}>₹{item.revenue}</span>
+                <span style={{ width: '80px', textAlign: 'right', fontSize: '13px', fontWeight: 'bold', color: '#94161c' }}>₹{item.revenue.toFixed(2)}</span>
               </div>
             ))}
-            {topItems.length === 0 && <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No orders settled yet.</span>}
+            {topItems.length === 0 && <span style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No orders recorded for this period.</span>}
           </div>
         </div>
 
