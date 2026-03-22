@@ -307,12 +307,18 @@ const AppSidebar = ({ activeView, onViewChange }) => {
   );
 };
 
-const AppTopNavbar = ({ onSimulateAggregator }) => (
+const AppTopNavbar = ({ onSimulateAggregator, globalSearch, onSearchChange }) => (
   <div className="no-print" style={{ height: '70px', background: 'white', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', padding: '0 32px', position: 'sticky', top: 0, zIndex: 10 }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flex: 1 }}>
       <div style={{ background: '#f8fafc', padding: '10px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', minWidth: '400px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
         <Search size={18} color="#94a3b8" />
-        <input type="text" placeholder="Search for anything (Bills, Tables, Items...)" style={{ background: 'transparent', border: 'none', fontSize: '14px', width: '100%', outline: 'none', fontWeight: '500' }} />
+        <input 
+          type="text" 
+          placeholder="Search for anything (Bills, Tables, Items...)" 
+          value={globalSearch}
+          onChange={e => onSearchChange(e.target.value)}
+          style={{ background: 'transparent', border: 'none', fontSize: '14px', width: '100%', outline: 'none', fontWeight: '500' }} 
+        />
       </div>
     </div>
     
@@ -334,13 +340,23 @@ const AppTopNavbar = ({ onSimulateAggregator }) => (
 );
 
 /* --- ORDER HISTORY VIEW --- */
-const OrderHistoryView = ({ orderHistory, activePickups = [], onSelectActive }) => {
+const OrderHistoryView = ({ orderHistory, activePickups = [], onSelectActive, globalSearch }) => {
   const [viewMode, setViewMode] = useState('card'); // 'card', 'table', 'compact'
+  const [localSearch, setLocalSearch] = useState('');
+
+  const searchVal = globalSearch || localSearch;
 
   const allOrders = [
     ...activePickups.map(o => ({ ...o, isActive: true })),
     ...orderHistory
-  ].sort((a, b) => new Date(b.timestamp || Date.now()) - new Date(a.timestamp || Date.now()));
+  ].filter(o => {
+    if (!searchVal) return true;
+    const s = searchVal.toLowerCase();
+    return (o.id && String(o.id).toLowerCase().includes(s)) ||
+           (o.customerName && String(o.customerName).toLowerCase().includes(s)) ||
+           (o.phone && String(o.phone).includes(s)) ||
+           (o.tableId && String(o.tableId).toLowerCase().includes(s));
+  }).sort((a, b) => new Date(b.timestamp || Date.now()) - new Date(a.timestamp || Date.now()));
 
   const getOrderTotal = (order) => {
     if (order.grandTotal) return order.grandTotal;
@@ -1490,10 +1506,19 @@ const PrinterSettingsView = ({ settings, onSaveSettings, categories }) => {
   );
 };
 
-const TableManagement = ({ tables, floorPlanSections, onSelectTable, onClearTable, settings, onQuickSettle, onQuickPrint }) => {
+const TableManagement = ({ tables, floorPlanSections, onSelectTable, onClearTable, settings, onQuickSettle, onQuickPrint, globalSearch }) => {
   const [tableToClear, setTableToClear] = useState(null);
   const [viewMode, setViewMode] = useState('map'); // 'grid' or 'map'
   const getTableTotal = (order) => order.reduce((acc, item) => acc + (item.price * item.qty), 0);
+
+  const filterMatch = (t) => {
+    if (!globalSearch) return true;
+    const name = (t.name || '').toLowerCase();
+    const search = globalSearch.toLowerCase();
+    return name.includes(search) || String(t.id).includes(search) || (t.customerName || '').toLowerCase().includes(search) || (t.phone || '').includes(search);
+  };
+
+  const filteredTables = tables.filter(filterMatch);
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#fcfcfd' }} className="animate-fade-in no-scrollbar">
@@ -1531,7 +1556,7 @@ const TableManagement = ({ tables, floorPlanSections, onSelectTable, onClearTabl
               position: 'relative', height: '550px', background: 'white', borderRadius: '32px', border: '1px solid #f1f5f9', overflow: 'auto',
               backgroundImage: 'radial-gradient(#f1f5f9 1px, transparent 1px)', backgroundSize: '30px 30px'
             }}>
-              {tables.filter(t => t.type === section).map(table => {
+              {filteredTables.filter(t => t.type === section).map(table => {
                 const tableTotal = getTableTotal(table.order);
                 const isRunning = table.status !== 'blank';
                 const isPrinted = table.status === 'printed';
@@ -1591,7 +1616,7 @@ const TableManagement = ({ tables, floorPlanSections, onSelectTable, onClearTabl
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px' }}>
-              {tables.filter(t => t.type === section).map(table => {
+              {filteredTables.filter(t => t.type === section).map(table => {
                 const tableTotal = getTableTotal(table.order);
                 const isRunning = table.status !== 'blank';
                 const isPrinted = table.status === 'printed';
@@ -1697,8 +1722,18 @@ const KitchenDisplay = ({ tables, nonTableOrders, onMarkReady }) => {
   );
 };
 
-const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder, onViewChange, onQuickSettle, onQuickPrint }) => {
+const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder, onViewChange, onQuickSettle, onQuickPrint, globalSearch }) => {
+  const [localSearch, setLocalSearch] = useState('');
   const getOrderTotal = (orderArr) => orderArr.reduce((acc, item) => acc + (item.price * item.qty), 0);
+
+  const searchVal = globalSearch || localSearch;
+
+  const filteredOrders = orders.filter(o => 
+    (o.id && String(o.id).toLowerCase().includes(searchVal.toLowerCase())) ||
+    (o.customerName && String(o.customerName).toLowerCase().includes(searchVal.toLowerCase())) ||
+    (o.phone && String(o.phone).includes(searchVal)) ||
+    (o.type && String(o.type).toLowerCase().includes(searchVal.toLowerCase()))
+  );
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f8fafc' }} className="animate-fade-in no-scrollbar">
@@ -1707,7 +1742,17 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder, onViewChange
           <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b' }}>Pickup Orders Dashboard</h2>
           <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Showing recent active pickup and delivery orders.</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '10px', minWidth: '240px' }}>
+            <Search size={16} color="#94a3b8" />
+            <input 
+              type="text" 
+              placeholder="Search TAK Order ID / Mobile..." 
+              value={localSearch}
+              onChange={e => setLocalSearch(e.target.value)}
+              style={{ border: 'none', background: 'transparent', width: '100%', fontSize: '13px', outline: 'none' }} 
+            />
+          </div>
           <button
             className="btn-pp"
             onClick={() => onCreateOrder('Takeaway')}
@@ -1728,13 +1773,13 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder, onViewChange
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
-        {orders.length === 0 && (
+        {filteredOrders.length === 0 && (
           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px', background: 'white', borderRadius: '12px', border: '2px dashed #e2e8f0' }}>
             <ShoppingBag size={48} color="#cbd5e1" style={{ margin: '0 auto 16px' }} />
-            <div style={{ color: '#94a3b8', fontSize: '15px', fontWeight: '500' }}>No active pickup orders at the moment.</div>
+            <div style={{ color: '#94a3b8', fontSize: '15px', fontWeight: '500' }}>No matching pickup orders found.</div>
           </div>
         )}
-        {[...orders].reverse().slice(0, 10).map(order => {
+        {[...filteredOrders].reverse().map(order => {
           const tableTotal = getOrderTotal(order.order);
           let bg = order.type === 'Delivery' ? '#fff1f2' : '#f0f9ff';
           let text = order.type === 'Delivery' ? '#be123c' : '#0369a1';
@@ -1786,18 +1831,6 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder, onViewChange
           );
         })}
       </div>
-
-      {orders.length > 10 && (
-        <div style={{ textAlign: 'center', padding: '20px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-          <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '12px' }}>Showing 10 most recent orders. There are {orders.length - 10} more active pickups.</p>
-          <button
-            onClick={() => onViewChange('orderhistory')}
-            style={{ background: 'white', border: '1px solid #94161c', color: '#94161c', padding: '8px 24px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-          >
-            View All Active & Past Orders in History <Clock size={16} />
-          </button>
-        </div>
-      )}
     </div>
   );
 };
@@ -2475,7 +2508,7 @@ const OrderingSystem = ({ table, tables, nonTableOrders, initialOrder, onBack, o
       await printPosToSerial({
         orderId: table?.id,
         isReprint: actionType.includes('Reprint'),
-        tableName: table?.name || table?.id,
+        tableName: (table?.name && table?.name.trim() !== '') ? table.name : `Table ${table?.id}`,
         customerName: customerName,
         customerPhone: customerPhone,
         items: itemsToPrint,
@@ -3304,8 +3337,7 @@ export default function App() {
   const [view, setView] = useState('tables');
   const [selectedTable, setSelectedTable] = useState(null);
   const [quickSettleTable, setQuickSettleTable] = useState(null);
-
-  // PERSISTENCE LOGIC (IndexedDB based)
+  const [globalSearch, setGlobalSearch] = useState('');
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [tables, setTables] = useState(INITIAL_TABLES);
   const [orderHistory, setOrderHistory] = useState([]);
@@ -3568,7 +3600,7 @@ export default function App() {
     const serviceCharge = (settings?.autoServiceCharge) ? Math.floor(subtotal * (settings?.serviceChargeRate || 5) / 100) : 0;
     const grandTotal = subtotal + serviceCharge;
     await printPosToSerial({
-      tableName: table.name || table.id,
+      tableName: (table.name && table.name.trim() !== '') ? table.name : `Table ${table.id}`,
       orderType: table.type === 'Delivery' ? 'Delivery' : (table.type === 'Takeaway' ? 'Pick Up' : 'Dine In'),
       items: table.order,
       subtotal,
@@ -3588,7 +3620,7 @@ export default function App() {
       <AppSidebar activeView={view} onViewChange={setView} />
       
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <AppTopNavbar onSimulateAggregator={handleSimulateAggregator} />
+        <AppTopNavbar onSimulateAggregator={handleSimulateAggregator} globalSearch={globalSearch} onSearchChange={setGlobalSearch} />
         
         <main style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
           {quickSettleTable && (
@@ -3607,10 +3639,10 @@ export default function App() {
           )}
 
           {view === 'tables' && (
-            <TableManagement tables={tables} floorPlanSections={floorPlanSections} onSelectTable={handleSelectTable} onClearTable={clearTableFast} settings={settings} onQuickSettle={setQuickSettleTable} onQuickPrint={handleQuickPrint} />
+            <TableManagement tables={tables} floorPlanSections={floorPlanSections} onSelectTable={handleSelectTable} onClearTable={clearTableFast} settings={settings} onQuickSettle={setQuickSettleTable} onQuickPrint={handleQuickPrint} globalSearch={globalSearch} />
           )}
           {view === 'nontables' && (
-            <NonTableManagement orders={nonTableOrders} onSelectOrder={handleSelectTable} onCreateOrder={handleCreateNonTableOrder} onViewChange={setView} onQuickSettle={setQuickSettleTable} onQuickPrint={handleQuickPrint} />
+            <NonTableManagement orders={nonTableOrders} onSelectOrder={handleSelectTable} onCreateOrder={handleCreateNonTableOrder} onViewChange={setView} onQuickSettle={setQuickSettleTable} onQuickPrint={handleQuickPrint} globalSearch={globalSearch} />
           )}
           {view === 'analytics' && (
             <AnalyticsDashboard orderHistory={orderHistory} menuItems={menuItems} />
@@ -3628,7 +3660,7 @@ export default function App() {
             <KitchenDisplay tables={tables} nonTableOrders={nonTableOrders} onMarkReady={markOrderReady} />
           )}
           {view === 'orderhistory' && (
-            <OrderHistoryView orderHistory={orderHistory} activePickups={nonTableOrders} onSelectActive={handleSelectTable} />
+            <OrderHistoryView orderHistory={orderHistory} activePickups={nonTableOrders} onSelectActive={handleSelectTable} globalSearch={globalSearch} />
           )}
           {view === 'globalsettings' && (
             <GlobalSettingsView settings={settings} onSaveSettings={setSettings} />
