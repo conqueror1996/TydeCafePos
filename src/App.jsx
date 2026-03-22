@@ -324,19 +324,15 @@ const AppTopNavbar = ({ onSimulateAggregator, globalSearch, onSearchChange, onTo
         <Plus size={16} /> Online Sync
       </div>
       
-      <div style={{ background: '#f8fafc', padding: '8px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '8px', flex: 1, maxWidth: '200px' }}>
-        <Search size={16} color="#94a3b8" />
+      <div style={{ background: '#f8fafc', padding: '10px 18px', borderRadius: '14px', border: '1px solid #e2e8f0', flex: 1, display: 'flex', alignItems: 'center', gap: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+        <Search size={18} color="#94a3b8" />
         <input 
           type="text" 
-          placeholder="Bill No" 
+          placeholder="Smart Search (Order ID, Customer, Table, Products...)" 
           value={globalSearch}
           onChange={e => onSearchChange(e.target.value)}
-          style={{ background: 'transparent', border: 'none', fontSize: '13px', width: '100%', outline: 'none' }} 
+          style={{ background: 'transparent', border: 'none', fontSize: '14px', width: '100%', outline: 'none', fontWeight: '500' }} 
         />
-      </div>
-      <div style={{ background: '#f8fafc', padding: '8px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '8px', flex: 1, maxWidth: '200px' }}>
-        <Search size={16} color="#94a3b8" />
-        <input type="text" placeholder="KOT No" style={{ background: 'transparent', border: 'none', fontSize: '13px', width: '100%', outline: 'none' }} />
       </div>
     </div>
     
@@ -381,23 +377,37 @@ const AppTopNavbar = ({ onSimulateAggregator, globalSearch, onSearchChange, onTo
 );
 
 /* --- ORDER HISTORY VIEW --- */
-const OrderHistoryView = ({ orderHistory, activePickups = [], onSelectActive, globalSearch }) => {
+const OrderHistoryView = ({ orderHistory, activePickups = [], onSelectActive, globalSearch, tables = [] }) => {
   const [viewMode, setViewMode] = useState('card'); // 'card', 'table', 'compact'
   const [localSearch, setLocalSearch] = useState('');
 
   const searchVal = globalSearch || localSearch;
 
   const allOrders = [
-    ...activePickups.map(o => ({ ...o, isActive: true })),
-    ...orderHistory
+    ...tables.filter(t => t.order && t.order.length > 0).map(t => ({ 
+      ...t, 
+      isActive: true, 
+      tableId: t.name || t.id, 
+      type: 'Dine In',
+      timestamp: t.createdAt || Date.now()
+    })),
+    ...activePickups.map(o => ({ 
+      ...o, 
+      isActive: true, 
+      type: o.type || 'Pickup',
+      timestamp: o.createdAt || Date.now()
+    })),
+    ...orderHistory.map(o => ({ ...o, isActive: false }))
   ].filter(o => {
     if (!searchVal) return true;
     const s = searchVal.toLowerCase();
+    const items = (o.order || o.cart || []);
     return (o.id && String(o.id).toLowerCase().includes(s)) ||
            (o.customerName && String(o.customerName).toLowerCase().includes(s)) ||
            (o.phone && String(o.phone).includes(s)) ||
-           (o.tableId && String(o.tableId).toLowerCase().includes(s));
-  }).sort((a, b) => new Date(b.timestamp || Date.now()) - new Date(a.timestamp || Date.now()));
+           (o.tableId && String(o.tableId).toLowerCase().includes(s)) ||
+           (items.some(item => (item.name || '').toLowerCase().includes(s)));
+  }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   const getOrderTotal = (order) => {
     if (order.grandTotal) return order.grandTotal;
@@ -559,13 +569,16 @@ const OrderHistoryView = ({ orderHistory, activePickups = [], onSelectActive, gl
                     <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: isSettled ? '#f0fdf4' : '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {isSettled ? <CheckSquare size={16} color="#10b981" /> : <Clock size={16} color="var(--primary)" />}
                     </div>
-                    <span style={{ fontWeight: '800', color: '#0f172a' }}>{order.customerName || order.id || 'Walk-In'}</span>
+                    <div>
+                      <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '13px' }}>{order.customerName || order.id || 'Walk-In Customer'}</div>
+                      <div style={{ fontSize: '10px', color: '#94a3b8' }}>By: {order.phone || 'Staff'}</div>
+                    </div>
                   </div>
                   <div style={{ textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#64748b' }}>
-                    #{String(order.id).slice(-6)} • {time} • <span style={{ color: isSettled ? '#10b981' : 'var(--primary)' }}>{isSettled ? 'SETTLED' : 'ACTIVE'}</span>
+                    #{String(order.id).slice(-6)} • {new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • <span style={{ color: isSettled ? '#10b981' : 'var(--primary)' }}>{isSettled ? 'SETTLED' : 'ONGOING'}</span>
                   </div>
-                  <div style={{ textAlign: 'center', fontSize: '12px', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {(order.cart || order.order || []).map(i => i.name).join(', ')}
+                  <div style={{ textAlign: 'center', fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
+                    {order.tableId ? `Table ${order.tableId}` : order.type} • {(order.cart || order.order || []).length} items
                   </div>
                   <div style={{ textAlign: 'right', fontWeight: '900', color: '#0f172a', fontSize: '16px' }}>₹{total.toFixed(2)}</div>
                 </div>
@@ -637,21 +650,30 @@ const OrderHistoryView = ({ orderHistory, activePickups = [], onSelectActive, gl
                     </div>
                     <div>
                       <div style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px' }}>
-                        {order.customerName || order.id || 'Walk-In'}
+                        {order.customerName || 'Walk-In Customer'}
                       </div>
-                      <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>
-                        ID: {String(order.id).slice(-6)} • {time}
+                      <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>
+                        ID: {String(order.id).slice(-6)} • {new Date(order.timestamp).toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 'bold', marginTop: '4px' }}>
+                        Ordered By: {order.phone || 'System/Staff'}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{
-                    padding: '8px 16px', borderRadius: '12px', fontSize: '11px', fontWeight: '900', letterSpacing: '1px',
-                    background: isSettled ? '#f8fafc' : '#fff1f2',
-                    color: isSettled ? '#64748b' : 'var(--primary)',
-                    border: '1px solid #f1f5f9'
-                  }}>
-                    {isSettled ? (order.paymentMethod || 'CASH') : 'IN PROGRESS'}
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{
+                      padding: '8px 16px', borderRadius: '12px', fontSize: '10px', fontWeight: '900', letterSpacing: '1px',
+                      background: isSettled ? '#f0fdf4' : '#fff7ed',
+                      color: isSettled ? '#15803d' : '#c2410c',
+                      border: isSettled ? '1px solid #dcfce7' : '1px solid #ffedd5',
+                      marginBottom: '8px'
+                    }}>
+                      {isSettled ? 'SETTLED' : 'ONGOING'}
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: '900', color: '#1e293b' }}>
+                      {order.tableId ? `Table ${order.tableId}` : order.type}
+                    </div>
                   </div>
                 </div>
 
@@ -3468,6 +3490,14 @@ export default function App() {
   const [quickSettleTable, setQuickSettleTable] = useState(null);
   const [quickPrintTable, setQuickPrintTable] = useState(null);
   const [globalSearch, setGlobalSearch] = useState('');
+  
+  const handleGlobalSearch = (val) => {
+    setGlobalSearch(val);
+    if (val.length > 0 && view !== 'orderhistory') {
+      setView('orderhistory');
+    }
+  };
+
   const [showSidebar, setShowSidebar] = useState(false);
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [tables, setTables] = useState(INITIAL_TABLES);
@@ -3746,7 +3776,7 @@ export default function App() {
         <AppTopNavbar 
           onSimulateAggregator={handleSimulateAggregator} 
           globalSearch={globalSearch} 
-          onSearchChange={setGlobalSearch} 
+          onSearchChange={handleGlobalSearch} 
           onToggleSidebar={() => setShowSidebar(!showSidebar)}
           onViewChange={setView}
         />
@@ -3814,7 +3844,7 @@ export default function App() {
             <KitchenDisplay tables={tables} nonTableOrders={nonTableOrders} onMarkReady={markOrderReady} />
           )}
           {view === 'orderhistory' && (
-            <OrderHistoryView orderHistory={orderHistory} activePickups={nonTableOrders} onSelectActive={handleSelectTable} globalSearch={globalSearch} />
+            <OrderHistoryView orderHistory={orderHistory} activePickups={nonTableOrders} onSelectActive={handleSelectTable} globalSearch={globalSearch} tables={tables} />
           )}
           {view === 'globalsettings' && (
             <GlobalSettingsView settings={settings} onSaveSettings={setSettings} />
