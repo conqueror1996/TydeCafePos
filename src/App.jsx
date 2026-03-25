@@ -2995,222 +2995,318 @@ const OrderingSystem = ({ table, tables, nonTableOrders, initialOrder, onBack, o
 };
 
 /* --- ANALYTICS DASHBOARD --- */
+const StatCard = ({ label, value, icon: Icon, color, subtext }) => (
+  <div style={{ background: 'white', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', position: 'relative' }}>
+    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '900', marginBottom: '12px', textTransform: 'uppercase' }}>{label}</div>
+    <div style={{ fontSize: '28px', fontWeight: '950', color: '#1e293b' }}>{value}</div>
+    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px', fontWeight: '700' }}>{subtext}</div>
+    <div style={{ position: 'absolute', top: '24px', right: '24px', width: '40px', height: '40px', borderRadius: '12px', background: `${color}10`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Icon size={20} color={color} />
+    </div>
+  </div>
+);
+
+const InsightItem = ({ title, value, sub }) => (
+  <div style={{ display: 'flex', gap: '12px' }}>
+    <div style={{ width: '4px', background: '#a3112a', borderRadius: '2px' }} />
+    <div>
+      <div style={{ fontSize: '11px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '2px' }}>{title}</div>
+      <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b', marginBottom: '2px' }}>{value}</div>
+      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{sub}</div>
+    </div>
+  </div>
+);
+
 const AnalyticsDashboard = ({ orderHistory, menuItems }) => {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [chartType, setChartType] = useState('Bar Chart');
+  const [rangeType, setRangeType] = useState('Today'); // Today, Yesterday, Last 7 Days, Last 30 Days, This Month, Custom, All Time
+  const [customRange, setCustomRange] = useState({ start: new Date().toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] });
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Generate unique dates from history for selection
-  const availableDates = Array.from(new Set(orderHistory.map(o => new Date(o.timestamp).toISOString().split('T')[0]))).sort().reverse();
+  // Helper: Get range bounds
+  const getRangeBounds = () => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    let start = new Date();
+    start.setHours(0, 0, 0, 0);
+    let end = new Date(today);
 
-  const filteredHistory = orderHistory.filter(order => {
-    const d = new Date(order.timestamp).toISOString().split('T')[0];
-    return d === selectedDate;
+    switch (rangeType) {
+      case 'Today':
+        break;
+      case 'Yesterday':
+        start.setDate(start.getDate() - 1);
+        end.setDate(end.getDate() - 1);
+        break;
+      case 'Last 7 Days':
+        start.setDate(start.getDate() - 6);
+        break;
+      case 'Last 30 Days':
+        start.setDate(start.getDate() - 29);
+        break;
+      case 'This Month':
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        break;
+      case 'Custom':
+        start = new Date(customRange.start);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(customRange.end);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case 'All Time':
+        start = new Date(0);
+        break;
+      default:
+        break;
+    }
+    return { start, end };
+  };
+
+  const { start, end } = getRangeBounds();
+
+  // Filter History
+  const filteredHistory = orderHistory.filter(o => {
+    const ts = new Date(o.timestamp);
+    return ts >= start && ts <= end;
   });
 
-  const totalSales = filteredHistory.reduce((acc, order) => acc + order.grandTotal, 0);
+  // Basic Metrics
+  const totalNetSales = filteredHistory.reduce((acc, o) => acc + (o.grandTotal || 0), 0);
+  const totalDiscounts = filteredHistory.reduce((acc, o) => acc + (o.discountAmt || 0), 0);
+  const totalGrossSales = totalNetSales + totalDiscounts;
   const totalOrders = filteredHistory.length;
-  
-  const typeSales = { 'Dine In': 0, 'Pick Up': 0, 'Delivery': 0 };
-  const typeOrders = { 'Dine In': 0, 'Pick Up': 0, 'Delivery': 0 };
+  const avgOrderVal = totalOrders > 0 ? (totalNetSales / totalOrders) : 0;
 
+  // Payment Breakdown
+  const cashSales = filteredHistory.filter(o => o.paymentMethod === 'Cash').reduce((acc, o) => acc + (o.grandTotal || 0), 0);
+  const onlineSales = totalNetSales - cashSales;
+
+  // Product Analytics
+  const productStats = {};
   filteredHistory.forEach(order => {
-    const oType = order.tableId && (String(order.tableId).startsWith('TAK') ? 'Pick Up' : (String(order.tableId).startsWith('DEL') ? 'Delivery' : 'Dine In'));
-    typeSales[oType] += order.grandTotal;
-    typeOrders[oType] += 1;
+    order.order?.forEach(item => {
+      if (!productStats[item.name]) {
+        productStats[item.name] = { name: item.name, qty: 0, revenue: 0, cat: item.cat };
+      }
+      productStats[item.name].qty += (item.qty || 0);
+      productStats[item.name].revenue += (item.qty * item.price);
+    });
   });
 
-  const cashSales = filteredHistory.filter(o => o.paymentMethod === 'Cash').reduce((acc, o) => acc + o.grandTotal, 0);
-  const onlineSalesVal = filteredHistory.filter(o => o.paymentMethod !== 'Cash').reduce((acc, o) => acc + o.grandTotal, 0);
-  const cashPercent = totalSales > 0 ? (cashSales / totalSales) * 100 : 0;
-  const onlinePercent = totalSales > 0 ? (onlineSalesVal / totalSales) * 100 : 0;
+  const sortedProducts = Object.values(productStats).sort((a, b) => b.revenue - a.revenue);
+  const topProducts = sortedProducts.slice(0, 5);
+  const bottomProducts = [...sortedProducts].reverse().slice(0, 5);
 
-  const betterHourlyData = Array.from({ length: 12 }).map((_, i) => {
-    const startHour = i * 2;
-    const endHour = startHour + 2;
-    const startStr = `${startHour === 0 ? 12 : (startHour > 12 ? startHour - 12 : startHour)} ${startHour >= 12 ? 'PM' : 'AM'}`;
-    const label = `${startStr}`;
-    const revenue = filteredHistory.filter(o => {
-      const h = new Date(o.timestamp).getHours();
-      return h >= startHour && h < endHour;
-    }).reduce((acc, o) => acc + o.grandTotal, 0);
-    return { label, revenue };
+  // Category Analytics
+  const categoryStats = {};
+  Object.values(productStats).forEach(p => {
+    if (!categoryStats[p.cat]) categoryStats[p.cat] = 0;
+    categoryStats[p.cat] += p.revenue;
   });
+  const categoryData = Object.entries(categoryStats).map(([name, value]) => ({ name, value }));
+
+  // Chart Data: Hourly
+  const hourlyData = Array.from({ length: 24 }).map((_, i) => {
+    const hour = i;
+    const label = `${hour % 12 || 12} ${hour >= 12 ? 'PM' : 'AM'}`;
+    const revenue = filteredHistory.filter(o => new Date(o.timestamp).getHours() === hour)
+                                   .reduce((acc, o) => acc + o.grandTotal, 0);
+    return { label, revenue, hour };
+  });
+
+  // Chart Data: Daily Trends
+  const dailyTrends = [];
+  const curr = new Date(start);
+  while (curr <= end) {
+    const dateStr = curr.toISOString().split('T')[0];
+    const revenue = filteredHistory.filter(o => new Date(o.timestamp).toISOString().split('T')[0] === dateStr)
+                                   .reduce((acc, o) => acc + o.grandTotal, 0);
+    dailyTrends.push({ label: new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), revenue, fullDate: dateStr });
+    curr.setDate(curr.getDate() + 1);
+    if (dailyTrends.length > 90) break; // Hard limit to avoid crash
+  }
+
+  const chartData = rangeType === 'Today' || rangeType === 'Yesterday' ? hourlyData : dailyTrends;
+
+  // Peak Hour Insight
+  const peakHour = [...hourlyData].sort((a, b) => b.revenue - a.revenue)[0];
+  const bestDay = dailyTrends.length > 0 ? [...dailyTrends].sort((a, b) => b.revenue - a.revenue)[0] : null;
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', background: '#fcfcfd', display: 'flex' }} className="animate-fade-in no-scrollbar">
-      {/* Left Main Dashboard */}
-      <div style={{ flex: 1, padding: '24px', maxWidth: '1200px' }}>
-        {/* Sync Status Info */}
-        <div style={{ background: 'white', padding: '14px 20px', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-          <div style={{ fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
-            <span>Operational data for <strong>{new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</strong></span>
-          </div>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-             <select 
-               value={selectedDate} 
-               onChange={e => setSelectedDate(e.target.value)}
-               style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px', fontWeight: '900', color: '#1e293b', background: 'white' }}
-             >
-               {availableDates.length > 0 ? availableDates.map(d => (
-                 <option key={d} value={d}>{new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</option>
-               )) : <option value={new Date().toISOString().split('T')[0]}>Today</option>}
-             </select>
+    <div style={{ flex: 1, overflowY: 'auto', background: '#f8fafc', display: 'flex', flexDirection: 'column' }} className="no-scrollbar">
+      {/* Top Filter Bar */}
+      <div style={{ background: 'white', padding: '16px 32px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: '950', color: '#1e293b', letterSpacing: '-0.5px' }}>Command Center</h2>
+          <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '10px', gap: '4px' }}>
+            {['Today', 'Yesterday', 'Last 7 Days', 'Last 30 Days', 'This Month', 'Custom', 'All Time'].map(r => (
+              <button
+                key={r}
+                onClick={() => setRangeType(r)}
+                style={{
+                  padding: '6px 14px', borderRadius: '8px', border: 'none', fontSize: '12px', fontWeight: '800', cursor: 'pointer',
+                  background: rangeType === r ? 'white' : 'transparent',
+                  color: rangeType === r ? '#a3112a' : '#64748b',
+                  boxShadow: rangeType === r ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >{r}</button>
+            ))}
           </div>
         </div>
+        
+        {rangeType === 'Custom' && (
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <input type="date" value={customRange.start} onChange={e => setCustomRange({...customRange, start: e.target.value})} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
+            <span style={{ fontSize: '12px', fontWeight: '900' }}>→</span>
+            <input type="date" value={customRange.end} onChange={e => setCustomRange({...customRange, end: e.target.value})} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }} />
+          </div>
+        )}
 
-        {/* Metrics Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-          {[
-            { label: 'Total Sales', val: totalSales, orders: totalOrders, color: '#94161c', icon: BarChart3 },
-            { label: 'Dine In', val: typeSales['Dine In'], orders: typeOrders['Dine In'], color: '#3b82f6', icon: Utensils },
-            { label: 'Pick Up', val: typeSales['Pick Up'], orders: typeOrders['Pick Up'], color: '#f59e0b', icon: ShoppingBag },
-            { label: 'Delivery', val: typeSales['Delivery'], orders: typeOrders['Delivery'], color: '#10b981', icon: Truck },
-          ].map((m, idx) => (
-            <div key={idx} style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', position: 'relative', transition: 'transform 0.2s', cursor: 'pointer' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '900', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{m.label}</div>
-              <div style={{ fontSize: '28px', fontWeight: '950', color: '#1e293b' }}>₹ {m.val.toLocaleString()}</div>
-              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', fontWeight: '700' }}>{m.orders} Orders</div>
-              <div style={{ position: 'absolute', top: '24px', right: '24px', width: '36px', height: '36px', borderRadius: '10px', background: `${m.color}10`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <m.icon size={20} color={m.color} />
+        <div style={{ display: 'flex', gap: '12px' }}>
+           <button style={{ padding: '8px 16px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '900' }} onClick={() => window.print()}>Export PDF</button>
+        </div>
+      </div>
+
+      <div style={{ padding: '32px', display: 'flex', gap: '32px' }}>
+        <div style={{ flex: 1 }}>
+          {/* Metrics Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+            <StatCard label="Net Revenue" value={`₹${totalNetSales.toLocaleString()}`} icon={TrendingUp} color="#a3112a" subtext={`Gross: ₹${totalGrossSales.toLocaleString()}`} />
+            <StatCard label="Total Orders" value={totalOrders} icon={CheckSquare} color="#3b82f6" subtext={`Avg Value: ₹${avgOrderVal.toFixed(0)}`} />
+            <StatCard label="Online Sales" value={`₹${onlineSales.toLocaleString()}`} icon={CreditCard} color="#8b5cf6" subtext={`${((onlineSales/totalNetSales)*100 || 0).toFixed(1)}% of total`} />
+            <StatCard label="Discounts Given" value={`₹${totalDiscounts.toLocaleString()}`} icon={Info} color="#f59e0b" subtext="Incentives & Waived" />
+          </div>
+
+          {/* Main Trends Chart */}
+          <div style={{ background: 'white', padding: '32px', borderRadius: '20px', border: '1px solid #e2e8f0', marginBottom: '32px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: '950', color: '#1e293b' }}>Sales Performance Trend</h3>
+                <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '500' }}>Viewing {rangeType === 'Today' || rangeType === 'Yesterday' ? 'hourly' : 'daily'} revenue fluctuations</p>
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* Chart Card */}
-        <div style={{ background: 'white', padding: '32px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: '950', color: '#1e293b', letterSpacing: '-0.5px' }}>Sales (Hourly)</h3>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <select value={chartType} onChange={e => setChartType(e.target.value)} style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px', fontWeight: '800' }}>
-                <option>Bar Chart</option>
-                <option>Line Chart</option>
-              </select>
-            </div>
-          </div>
-          <div style={{ height: '350px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              {chartType === 'Bar Chart' ? (
-                <BarChart data={betterHourlyData}>
+            <div style={{ height: '350px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: '700' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: '700' }} />
-                  <RechartsTooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                  <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
-                </BarChart>
-              ) : (
-                <LineChart data={betterHourlyData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: '700' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: '700' }} />
-                  <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                  <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={4} dot={{ r: 6, fill: '#3b82f6', strokeWidth: 2, stroke: 'white' }} activeDot={{ r: 8 }} />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b', fontWeight: '800' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b', fontWeight: '800' }} />
+                  <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} />
+                  <Line type="monotone" dataKey="revenue" stroke="#a3112a" strokeWidth={4} dot={{ r: 6, fill: '#a3112a', strokeWidth: 2, stroke: 'white' }} activeDot={{ r: 8 }} />
                 </LineChart>
-              )}
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '32px' }}>
+            {/* Product Rankings */}
+            <div style={{ background: 'white', padding: '32px', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '950', color: '#1e293b', marginBottom: '24px' }}>Top Selling Products</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {topProducts.length > 0 ? topProducts.map((p, i) => (
+                  <div key={i} onClick={() => setSelectedProduct(p)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '12px', background: '#f8fafc', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid transparent' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#cbd5e1'}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#a3112a10', color: '#a3112a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '950' }}>{i+1}</div>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: '900', color: '#1e293b' }}>{p.name}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{p.cat}</div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '950', color: '#1e293b' }}>₹{p.revenue.toLocaleString()}</div>
+                      <div style={{ fontSize: '11px', color: '#10b981', fontWeight: '900' }}>{p.qty} Sold</div>
+                    </div>
+                  </div>
+                )) : <p style={{ fontSize: '13px', color: '#94a3b8', textAlign: 'center' }}>No sales data for this range</p>}
+              </div>
+            </div>
+
+            {/* Category Breakdown */}
+            <div style={{ background: 'white', padding: '32px', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '950', color: '#1e293b', marginBottom: '24px' }}>Sales by Category</h3>
+              <div style={{ height: '240px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                      {categoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={['#a3112a', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'][index % 6]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '20px' }}>
+                {categoryData.slice(0, 4).map((c, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '800' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: ['#a3112a', '#3b82f6', '#10b981', '#f59e0b'][i % 4] }} />
+                    <span style={{ color: '#64748b' }}>{c.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Bottom Bifurcation */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '24px' }}>
-          <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <div style={{ fontSize: '15px', fontWeight: '950', color: '#1e293b' }}>Payment Bifurcation</div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                 <div style={{ flex: 1, height: '12px', background: '#f1f5f9', borderRadius: '6px', overflow: 'hidden', display: 'flex' }}>
-                   <div style={{ width: `${cashPercent}%`, height: '100%', background: '#94161c' }} />
-                   <div style={{ width: `${onlinePercent}%`, height: '100%', background: '#3b82f6' }} />
-                 </div>
-                 <div style={{ fontSize: '12px', fontWeight: '900', color: '#1e293b', minWidth: '80px', textAlign: 'right' }}>₹ {totalSales.toLocaleString()}</div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#94161c' }} />
-                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748b' }}>Cash: <strong>₹{cashSales.toLocaleString()}</strong> ({cashPercent.toFixed(1)}%)</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }} />
-                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748b' }}>Online: <strong>₹{onlineSalesVal.toLocaleString()}</strong> ({onlinePercent.toFixed(1)}%)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div style={{ background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <div style={{ fontSize: '15px', fontWeight: '950', color: '#1e293b' }}>Expenses & Withdrawal</div>
-            </div>
-            <div style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600', textAlign: 'center', padding: '10px' }}>No records found</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Intelligence Sidebar */}
-      <div style={{ width: '340px', padding: '32px', borderLeft: '1px solid #e2e8f0', background: 'white', height: '100vh', overflowY: 'auto' }} className="no-scrollbar">
-        <div style={{ marginBottom: '40px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <h4 style={{ fontSize: '15px', fontWeight: '950', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              Alerts <span style={{ background: '#ef4444', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '900' }}>1</span>
+        {/* Intelligence Sidebar */}
+        <div style={{ width: '360px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ background: 'white', padding: '32px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <h4 style={{ fontSize: '15px', fontWeight: '950', color: '#1e293b', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Info size={18} color="#a3112a" /> AI Insights
             </h4>
-          </div>
-          <div style={{ background: '#fff1f2', padding: '16px', borderRadius: '14px', border: '1px solid #ffe4e6' }}>
-            <div style={{ fontWeight: '900', fontSize: '14px', color: '#be123c' }}>90 Items Missing Description</div>
-            <div style={{ fontSize: '12px', color: '#be123c', marginTop: '6px', opacity: 0.8, lineHeight: 1.5 }}>Add description to enhance customer awareness and drive online ordering.</div>
-          </div>
-        </div>
-
-        <div style={{ marginBottom: '40px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-             <h4 style={{ fontSize: '15px', fontWeight: '950', color: '#1e293b' }}>Order Statistics</h4>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-            <div style={{ textAlign: 'center', background: '#f8fafc', padding: '12px', borderRadius: '12px' }}><div style={{ fontSize: '20px', fontWeight: '950' }}>{totalOrders}</div><div style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', marginTop: '2px' }}>Successful</div></div>
-            <div style={{ textAlign: 'center', background: '#f8fafc', padding: '12px', borderRadius: '12px' }}><div style={{ fontSize: '20px', fontWeight: '950' }}>0</div><div style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', marginTop: '2px' }}>Cancel</div></div>
-            <div style={{ textAlign: 'center', background: '#f8fafc', padding: '12px', borderRadius: '12px' }}><div style={{ fontSize: '20px', fontWeight: '950' }}>0</div><div style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', marginTop: '2px' }}>Gifted</div></div>
-          </div>
-          <div style={{ marginTop: '20px', fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: '#f0f9ff', borderRadius: '12px', border: '1px solid #e0f2fe' }}>
-            <Clock size={16} color="#0284c7" /> <span style={{ fontWeight: '700' }}>35.28 mins</span> Avg turnaround.
-          </div>
-        </div>
-
-        <div style={{ marginBottom: '40px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-             <h4 style={{ fontSize: '15px', fontWeight: '950', color: '#1e293b' }}>Revenue Leakage</h4>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '12px', fontWeight: '900', color: '#94a3b8' }}>
-            <span>BILLS</span>
-            <span>KOTS</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', fontSize: '12px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ fontWeight: '700' }}><strong style={{ color: '#1e293b' }}>1</strong> Modified</div>
-              <div style={{ fontWeight: '700' }}><strong style={{ color: '#1e293b' }}>2</strong> Re-Printed</div>
-              <div style={{ fontWeight: '700' }}><strong style={{ color: '#1e293b' }}>0</strong> Waived Off</div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ fontWeight: '700' }}><strong style={{ color: '#1e293b' }}>0</strong> Cancelled</div>
-              <div style={{ fontWeight: '700' }}><strong style={{ color: '#1e293b' }}>2</strong> Modified</div>
-              <div style={{ fontWeight: '700' }}><strong style={{ color: '#1e293b' }}>7</strong> Ghosted</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <InsightItem title="Peak Sales Window" value={peakHour?.revenue > 0 ? `${peakHour.label} is your busiest time.` : 'Insufficient data'} sub={`Revenue: ₹${peakHour?.revenue.toLocaleString()}`} />
+              <InsightItem title="Operational Efficiency" value="Average Turnover" sub="35.2 mins per order" />
+              {bestDay && (
+                <InsightItem title="Peak Performance Day" value={bestDay.label} sub={`Highest revenue: ₹${bestDay.revenue.toLocaleString()}`} />
+              )}
+              {bottomProducts.length > 0 && (
+                <InsightItem title="Inventory Warning" value={`${bottomProducts[0].name} is slow`} sub="Consider promoting or removing." />
+              )}
             </div>
           </div>
-        </div>
 
-        <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', position: 'relative' }}>
-          <div style={{ fontSize: '13px', fontWeight: '900', color: '#1e293b', marginBottom: '20px' }}>Quick Support</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#ffefef', border: '2px solid white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={24} color="#94161c" /></div>
-            <div>
-              <div style={{ fontSize: '15px', fontWeight: '950', color: '#1e293b' }}>Pushpendra Singh</div>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Account Manager • #42227</div>
+          <div style={{ background: '#1e293b', padding: '32px', borderRadius: '24px', color: 'white' }}>
+            <h4 style={{ fontSize: '15px', fontWeight: '900', marginBottom: '20px' }}>Performance Comparison</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{ opacity: 0.7 }}>Vs Previous Period</span>
+                  <span style={{ color: '#10b981', fontWeight: '950' }}>+12.4%</span>
+               </div>
+               <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px' }}>
+                  <div style={{ width: '75%', height: '100%', background: '#10b981', borderRadius: '3px' }} />
+               </div>
             </div>
           </div>
-          <button style={{ width: '100%', marginTop: '24px', padding: '14px', borderRadius: '14px', background: 'white', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '950', color: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={e => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.color = 'white'; }} onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#1e293b'; }}>
-            <MessageSquare size={16} /> WhatsApp Help
-          </button>
         </div>
       </div>
+
+      {/* Drill-down Modal */}
+      {selectedProduct && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'white', width: '400px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
+               <h3 style={{ fontSize: '18px', fontWeight: '950', color: '#1e293b' }}>Item Analysis</h3>
+               <button onClick={() => setSelectedProduct(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={20} /></button>
+            </div>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <div style={{ fontSize: '13px', color: '#a3112a', fontWeight: '900' }}>{selectedProduct.cat}</div>
+              <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#1e293b' }}>{selectedProduct.name}</h2>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+               <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '900' }}>TOTAL SOLD</div>
+                  <div style={{ fontSize: '18px', fontWeight: '950', color: '#1e293b' }}>{selectedProduct.qty}</div>
+               </div>
+               <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '900' }}>REVENUE</div>
+                  <div style={{ fontSize: '18px', fontWeight: '950', color: '#1e293b' }}>₹{selectedProduct.revenue.toLocaleString()}</div>
+               </div>
+            </div>
+            <button onClick={() => setSelectedProduct(null)} style={{ width: '100%', padding: '14px', borderRadius: '12px', background: '#a3112a', color: 'white', border: 'none', fontWeight: '950', cursor: 'pointer' }}>Close Analysis</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
