@@ -2610,7 +2610,7 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
         }
 
         for (const group of groupsToPrint) {
-          const bytes = generator.generateKOT(group, group.title);
+          const bytes = generator.generateKOT(group.items, group.title, orderData);
           await writer.write(bytes);
         }
       } else {
