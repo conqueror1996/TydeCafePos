@@ -1661,24 +1661,6 @@ const GlobalSettingsView = ({ settings, onSaveSettings, onClearHistory, onFullRe
             Save Comprehensive Interface Settings
           </button>
 
-          <div style={{ borderTop: '1px solid #f3f4f6', marginTop: '40px', paddingTop: '24px' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Printer size={20} color="var(--primary)" /> Billing & Receipt Design
-            </h3>
-            <div style={{ padding: '24px', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontWeight: '900', fontSize: '15px', color: '#0f172a', marginBottom: '4px' }}>Thermal Receipt Architecture</div>
-                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Modify headers, footers, tax details, and layout scaling.</div>
-              </div>
-              <button 
-                onClick={() => window.dispatchEvent(new CustomEvent('changeView', { detail: 'printersettings' }))}
-                style={{ padding: '10px 20px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', fontWeight: 'bold', fontSize: '12px', color: 'var(--primary)', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
-              >
-                Open Designer
-              </button>
-            </div>
-          </div>
-
           <div style={{ borderTop: '2px solid #fee2e2', marginTop: '40px', paddingTop: '24px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#dc2626', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <AlertTriangle size={20} color="#dc2626" /> Danger Zone: Data Management
@@ -1764,11 +1746,6 @@ const BillPreview = ({ settings }) => {
             {header.showPhone && header.showTaxId && <span> | </span>}
             {header.showTaxId && <span>{header.taxId}</span>}
           </div>
-          {header.headerNote && (
-            <div style={{ fontSize: '10px', marginTop: '4px', fontStyle: 'italic', opacity: 0.7 }}>
-              {header.headerNote}
-            </div>
-          )}
         </div>
       </div>
 
@@ -1843,12 +1820,6 @@ const BillPreview = ({ settings }) => {
       }}>
         {footer.bottomText}
       </div>
-
-      {footer.footerNote && (
-        <div style={{ fontSize: '9px', textAlign: footer.align, marginTop: '4px', opacity: 0.8 }}>
-          {footer.footerNote}
-        </div>
-      )}
 
       <div style={{ fontSize: '8px', textAlign: 'center', color: '#94a3b8', marginTop: '10px' }}>
         --- End of Bill ---
@@ -1934,17 +1905,7 @@ const PrinterSettingsView = ({ settings, onSaveSettings, categories }) => {
                       </div>
                     </div>
                   ))}
-                  <button 
-                    onClick={() => {
-                      const newId = `profile_${Date.now()}`;
-                      const newProfile = { id: newId, name: 'New Profile', paperWidth: '80mm', interface: 'USB' };
-                      updateNested('printerProfiles', [...localSettings.printerProfiles, newProfile]);
-                      updateNested('selectedProfileId', newId);
-                    }}
-                    style={{ padding: '12px', borderRadius: '12px', border: '2px dashed #e2e8f0', background: 'transparent', color: '#64748b', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                  >
-                    + Add New Profile
-                  </button>
+                  <button style={{ padding: '12px', borderRadius: '12px', border: '2px dashed #e2e8f0', background: 'transparent', color: '#64748b', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>+ Add New Profile</button>
                 </div>
               </div>
 
@@ -1962,17 +1923,10 @@ const PrinterSettingsView = ({ settings, onSaveSettings, categories }) => {
 
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '900', color: '#1e293b', display: 'block', marginBottom: '8px' }}>Interface Type</label>
-                <select 
-                  value={localSettings.printerProfiles.find(p => p.id === localSettings.selectedProfileId)?.interface || 'USB'} 
-                  onChange={(e) => {
-                    const newProfiles = localSettings.printerProfiles.map(p => p.id === localSettings.selectedProfileId ? { ...p, interface: e.target.value } : p);
-                    updateNested('printerProfiles', newProfiles);
-                  }}
-                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none' }}
-                >
-                  <option value="USB">Web Serial (USB Thermal)</option>
-                  <option value="LAN">Network (IP: 192.168.1.100)</option>
-                  <option value="SYSTEM">System Default (PDF/AirPrint)</option>
+                <select style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none' }}>
+                  <option>Web Serial (USB Thermal)</option>
+                  <option>Network (IP: 192.168.1.100)</option>
+                  <option>System Default (PDF/AirPrint)</option>
                 </select>
               </div>
             </div>
@@ -2027,11 +1981,6 @@ const PrinterSettingsView = ({ settings, onSaveSettings, categories }) => {
                     </div>
                     <input type="text" value={localSettings.header.taxId} onChange={e => updateNested('header.taxId', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }} />
                   </div>
-                </div>
-
-                <div style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Custom Header Note (Optional)</label>
-                  <input type="text" placeholder="e.g. WiFi Password or Welcome Message" value={localSettings.header.headerNote} onChange={e => updateNested('header.headerNote', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '11px' }} />
                 </div>
               </div>
 
@@ -2140,11 +2089,6 @@ const PrinterSettingsView = ({ settings, onSaveSettings, categories }) => {
                     <input type="text" placeholder="WiFi Pass" value={localSettings.footer.wifiPass} onChange={e => updateNested('footer.wifiPass', e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '11px' }} />
                   </div>
                 )}
-              </div>
-
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Closing Note (Single Line)</label>
-                <input type="text" placeholder="e.g. Follow us @tydecafe" value={localSettings.footer.footerNote} onChange={e => updateNested('footer.footerNote', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '11px' }} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
@@ -2532,79 +2476,6 @@ const NonTableManagement = ({ orders, onSelectOrder, onCreateOrder, onViewChange
   );
 };
 
-/* --- BROWSER SYSTEM PRINT FALLBACK --- */
-const printViaBrowser = (orderData, type = 'BILL') => {
-  // Use a temporary iframe to print only the bill content without the entire UI
-  const printWindow = window.open('', '_blank', 'width=400,height=600');
-  if (!printWindow) return alert("Pop-up blocked! Please allow popups to print via system dialog.");
-
-  const isKOT = type === 'KOT';
-  const title = isKOT ? `KOT - ${orderData.tableName || 'Order'}` : `Bill - #${orderData.orderId || 'New'}`;
-
-  printWindow.document.write(`
-    <html>
-      <head>
-        <title>${title}</title>
-        <style>
-          @page { margin: 0; }
-          body { font-family: 'Courier New', Courier, monospace; width: 80mm; padding: 10mm; margin: 0; font-size: 13px; line-height: 1.4; color: black; }
-          .center { text-align: center; }
-          .bold { font-weight: bold; }
-          .line { border-top: 1px dashed #000; margin: 5px 0; }
-          .row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-          .item-name { flex: 1; }
-          .qty { width: 40px; }
-          .total { width: 70px; text-align: right; }
-          table { width: 100%; border-collapse: collapse; }
-          th { text-align: left; border-bottom: 1px solid #000; }
-        </style>
-      </head>
-      <body>
-        <div class="center bold" style="font-size: 16px;">${isKOT ? 'KITCHEN ORDER' : (orderData.storeName || 'TYDE CAFE')}</div>
-        ${!isKOT ? `<div class="center">${orderData.storeAddress || ''}</div>` : ''}
-        <div class="line"></div>
-        <div class="row"><span class="bold">TABLE: ${orderData.tableName || 'N/A'}</span> <span>#${orderData.orderId || ''}</span></div>
-        <div class="row"><span>${new Date().toLocaleString()}</span></div>
-        <div class="line"></div>
-        
-        <table>
-          <thead>
-            <tr>
-              <th class="qty">QTY</th>
-              <th>ITEM</th>
-              ${!isKOT ? '<th class="total">TOTAL</th>' : ''}
-            </tr>
-          </thead>
-          <tbody>
-            ${(orderData.items || []).map(item => `
-              <tr>
-                <td class="qty">${item.qty}</td>
-                <td>${item.name}${item.note ? `<br/><small>* ${item.note}</small>` : ''}</td>
-                ${!isKOT ? `<td class="total">${(item.price * item.qty).toFixed(0)}</td>` : ''}
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        
-        <div class="line"></div>
-        ${!isKOT ? `
-          <div class="row bold"><span>GRAND TOTAL</span> <span>Rs. ${orderData.grandTotal || 0}</span></div>
-          <div class="line"></div>
-          <div class="center" style="font-size: 10px; margin-top: 10px;">Thank you for visiting us!</div>
-        ` : ''}
-        
-        <script>
-          window.onload = () => {
-            window.print();
-            window.close();
-          };
-        </script>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
-};
-
 /* --- DIRECT ESC/POS PRINTING HARDWARE ENGINE --- */
 // Connects bypassing Browser Dialog directly to USB/Serial EPSON/STAR format POS Thermal hardware
 const printPosToSerial = async (orderData, type = 'BILL') => {
@@ -2615,119 +2486,59 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
     await set(key, seqNumber + 1);
   } catch (e) { }
 
-  let port;
-  let writer;
   try {
     const printerConfig = await get('pos_printer_settings') || {};
-    const profiles = printerConfig.printerProfiles || [];
-    const selectedProfile = profiles.find(p => p.id === printerConfig.selectedProfileId) || profiles[0] || { interface: 'USB' };
-
-    console.log(`[PrinterEngine] Starting ${type} job via ${selectedProfile.interface} interface`);
-
-    if (selectedProfile.interface === 'SYSTEM') {
-      return printViaBrowser(orderData, type);
-    }
-
     const generator = new EscPosGenerator(printerConfig);
 
-    if (!('serial' in navigator)) {
-      console.warn("[PrinterEngine] Web Serial API missing. Falling back to System Print.");
-      return printViaBrowser(orderData, type);
-    }
-    
-    // Step 1: Intelligent Port Selection with Persistence
-    const existingPorts = await navigator.serial.getPorts();
-    const savedPrinterInfo = await get('preferred_printer_info');
-    console.log(`[PrinterEngine] Found ${existingPorts.length} authorized ports`);
-
-    let targetPort = null;
-    if (savedPrinterInfo && existingPorts.length > 0) {
-      targetPort = existingPorts.find(p => {
-        const info = p.getInfo();
-        return info.usbVendorId === savedPrinterInfo.usbVendorId && 
-               info.usbProductId === savedPrinterInfo.usbProductId;
-      });
-    }
-
-    if (targetPort) {
-      console.log("[PrinterEngine] Using pinned printer port");
-      port = targetPort;
-    } else if (existingPorts.length > 0 && savedPrinterInfo) {
-      console.log("[PrinterEngine] Pinned printer not found, using first available authorized port");
-      port = existingPorts[0];
-    } else {
-      console.log("[PrinterEngine] Requesting new printer authorization...");
-      port = await navigator.serial.requestPort();
-      const info = port.getInfo();
-      if (info.usbVendorId) {
-        await set('preferred_printer_info', {
-          usbVendorId: info.usbVendorId,
-          usbProductId: info.usbProductId
-        });
-      }
-    }
-
-    // Step 2: Open and Write
+    if (!('serial' in navigator)) throw new Error('Web Serial API not supported.');
+    const port = await navigator.serial.requestPort();
     await port.open({ baudRate: 9600 });
-    writer = port.writable.getWriter();
+    const writer = port.writable.getWriter();
 
-    try {
-      if (type === 'KOT') {
-        let groupsToPrint = [];
-        if (printerConfig.printerStations && printerConfig.printerStations.length > 0) {
-          const mainItems = [];
-          const stationsMap = {};
-          orderData.items.forEach(item => {
-            let assignedStation = null;
-            for (const st of printerConfig.printerStations) {
-              if (st.categories.includes(item.cat)) {
-                assignedStation = st.name;
-                break;
-              }
-            }
-            if (assignedStation) {
-              if (!stationsMap[assignedStation]) stationsMap[assignedStation] = [];
-              stationsMap[assignedStation].push(item);
-            } else {
-              mainItems.push(item);
-            }
-          });
-          Object.entries(stationsMap).forEach(([stName, items]) => {
-            groupsToPrint.push({ title: stName, items });
-          });
-          if (mainItems.length > 0) groupsToPrint.push({ title: 'Main Kitchen', items: mainItems });
-        } else {
-          groupsToPrint = [{ title: 'KOT', items: orderData.items }];
-        }
 
-        for (const group of groupsToPrint) {
-          const bytes = generator.generateKOT(group.items, group.title, orderData);
-          await writer.write(bytes);
-        }
+    if (type === 'KOT') {
+      let groupsToPrint = [];
+      if (printerConfig.printerStations && printerConfig.printerStations.length > 0) {
+        const mainItems = [];
+        const stationsMap = {};
+        orderData.items.forEach(item => {
+          let assignedStation = null;
+          for (const st of printerConfig.printerStations) {
+            if (st.categories.includes(item.cat)) {
+              assignedStation = st.name;
+              break;
+            }
+          }
+          if (assignedStation) {
+            if (!stationsMap[assignedStation]) stationsMap[assignedStation] = [];
+            stationsMap[assignedStation].push(item);
+          } else {
+            mainItems.push(item);
+          }
+        });
+        Object.entries(stationsMap).forEach(([stName, items]) => {
+          groupsToPrint.push({ title: stName, items });
+        });
+        if (mainItems.length > 0) groupsToPrint.push({ title: 'Main Kitchen', items: mainItems });
       } else {
-        // BILL
-        const bytes = generator.generateBill(orderData);
+        groupsToPrint = [{ title: 'KOT', items: orderData.items }];
+      }
+
+      for (const group of groupsToPrint) {
+        const bytes = generator.generateKOT(group, group.title);
         await writer.write(bytes);
       }
-    } finally {
-      if (writer) writer.releaseLock();
+    } else {
+      // BILL
+      const bytes = generator.generateBill(orderData);
+      await writer.write(bytes);
     }
+
+    writer.releaseLock();
+    await port.close();
   } catch (e) {
-    if (e.name === 'NotFoundError' || e.message.includes('No port selected')) {
-      console.log("Printing cancelled: No port selected.");
-      return;
-    }
     console.error("Printing error:", e);
     alert("Printing failed: " + e.message);
-  } finally {
-    // Release port even if printing or opening failed
-    if (port && port.writable) {
-      try {
-        await port.close();
-      } catch (closeErr) {
-        console.warn("Failed to close serial port:", closeErr);
-      }
-    }
   }
 };
 
@@ -3948,18 +3759,6 @@ const QuickSettleModal = ({ table, settings, onClose, onSettle }) => {
   );
 };
 
-const deepMerge = (target, source) => {
-  const result = { ...target };
-  Object.keys(source).forEach(key => {
-    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-      result[key] = deepMerge(target[key] || {}, source[key]);
-    } else {
-      result[key] = source[key];
-    }
-  });
-  return result;
-};
-
 export default function App() {
   const [view, setView] = useState('tables');
   const [selectedTable, setSelectedTable] = useState(null);
@@ -4018,7 +3817,6 @@ export default function App() {
       showPhone: true,
       showEmail: false,
       showTaxId: true,
-      headerNote: '', // Custom line below store info
       fontSize: 14,
       fontWeight: 'bold',
       lineSpacing: 1.2,
@@ -4052,7 +3850,6 @@ export default function App() {
       fontFamily: 'monospace',
       marginTop: 10,
       marginBottom: 0,
-      footerNote: 'Visit again!', // Custom line at very bottom
       showWiFi: false,
       wifiName: 'TydeCafe_Guest',
       wifiPass: 'welcome123'
@@ -4071,14 +3868,6 @@ export default function App() {
   const [customers, setCustomers] = useState({});
 
   useEffect(() => {
-    const handleViewChange = (e) => {
-      if (e.detail) setView(e.detail);
-    };
-    window.addEventListener('changeView', handleViewChange);
-    return () => window.removeEventListener('changeView', handleViewChange);
-  }, []);
-
-  useEffect(() => {
     const loadFromIDB = async () => {
       try {
         const savedTables = await get('pos_tables_v2');
@@ -4091,7 +3880,7 @@ export default function App() {
         if (savedNonTable) setNonTableOrders(savedNonTable);
 
         const savedSettings = await get('pos_printer_settings');
-        if (savedSettings) setSettings(prev => deepMerge(prev, savedSettings));
+        if (savedSettings) setSettings(prev => ({ ...prev, ...savedSettings }));
 
         const savedCustomers = await get('pos_customers');
         if (savedCustomers) setCustomers(savedCustomers);
@@ -4353,10 +4142,7 @@ export default function App() {
                   grandTotal,
                   orderId: quickPrintTable.id,
                   phone: quickPrintTable.phone,
-                  customerName: quickPrintTable.customerName,
-                  storeName: settings.header.storeName,
-                  storeAddress: settings.header.storeAddress,
-                  storePhone: settings.header.storePhone
+                  customerName: quickPrintTable.customerName
                 });
                 setTables(prev => prev.map(t => t.id === quickPrintTable.id ? { ...t, status: 'printed' } : t));
                 setQuickPrintTable(null);

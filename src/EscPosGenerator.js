@@ -5,49 +5,12 @@
 
 export class EscPosGenerator {
   constructor(settings = {}) {
-    // Robust default settings to prevent destructuring errors
-    this.settings = {
-      header: {
-        showLogo: true, logoAlign: 'center', logoSize: 60,
-        storeName: 'Tyde Cafe', storeAddress: 'Seawood Estate, Nerul',
-        storePhone: '+91 8652475772', taxId: 'GST: 27AABCV1234F1Z1',
-        showStoreName: true, showAddress: true, showPhone: true, showTaxId: true,
-        headerNote: '', fontSize: 14, fontWeight: 'bold', lineSpacing: 1.2,
-        fontFamily: 'Outfit', marginTop: 0, marginBottom: 10,
-        ...(settings.header || {})
-      },
-      meta: {
-        showTableNo: true, showOrderId: true, showDateTime: true,
-        showCustomerName: true, showCustomerPhone: true,
-        showCashierName: true, showOrderType: true,
-        ...(settings.meta || {})
-      },
-      body: {
-        showQty: true, showPrice: true, showTotal: true,
-        itemNameSize: 12, itemNameWeight: 'normal', itemPriceSize: 12,
-        separator: 'dashed',
-        ...(settings.body || {})
-      },
-      footer: {
-        bottomText: 'This is a computer generated bill.\nThank you for visiting us!',
-        fontSize: 10, fontWeight: 'normal', align: 'center', fontFamily: 'monospace',
-        marginTop: 10, marginBottom: 0, footerNote: 'Visit again!',
-        showWiFi: false, wifiName: 'TydeCafe_Guest', wifiPass: 'welcome123',
-        ...(settings.footer || {})
-      },
-      advanced: {
-        showTaxBreakdown: true, showQRCode: true,
-        margins: { top: 2, bottom: 5, left: 2, right: 2 },
-        ...(settings.advanced || {})
-      },
-      printerProfiles: settings.printerProfiles || [{ id: 'default', paperWidth: '80mm' }],
-      selectedProfileId: settings.selectedProfileId || 'default'
-    };
+    this.settings = settings;
     this.encoder = new TextEncoder();
     
     // Printer Profiles & Paper Width
-    const profileId = this.settings.selectedProfileId;
-    this.profile = this.settings.printerProfiles?.find(p => p.id === profileId) || { paperWidth: '80mm' };
+    const profileId = settings.selectedProfileId || 'default';
+    this.profile = settings.printerProfiles?.find(p => p.id === profileId) || { paperWidth: '80mm' };
     this.charLimit = this.profile.paperWidth === '58mm' ? 32 : 48; // Standard character limits for 58mm vs 80mm
     
     // Command Constants
@@ -86,70 +49,32 @@ export class EscPosGenerator {
   }
 
   generateBill(orderData) {
-    const { header, meta, body, footer, advanced } = this.settings;
+    const { header, body, footer, advanced } = this.settings;
     let cmds = [this.CMD.INIT];
 
     // --- Header ---
     cmds.push(header.logoAlign === 'center' ? this.CMD.ALIGN_CENTER : header.logoAlign === 'right' ? this.CMD.ALIGN_RIGHT : this.CMD.ALIGN_LEFT);
+    if (header.fontWeight === 'bold' || header.fontWeight === '900') cmds.push(this.CMD.BOLD_ON);
     
-    if (header.showStoreName && header.storeName) {
-      if (header.fontWeight === 'bold' || header.fontWeight === '900') cmds.push(this.CMD.BOLD_ON);
-      cmds.push(this.t(header.storeName + '\n'));
-      cmds.push(this.CMD.BOLD_OFF);
+    // Top Text
+    if (header.topText) {
+      cmds.push(this.t(header.topText + '\n'));
     }
-    
-    if (header.showAddress && header.storeAddress) {
-      cmds.push(this.t(header.storeAddress + '\n'));
-    }
-    
-    let contactInfo = "";
-    if (header.showPhone && header.storePhone) contactInfo += `Ph: ${header.storePhone}`;
-    if (header.showPhone && header.showTaxId) contactInfo += " | ";
-    if (header.showTaxId && header.taxId) contactInfo += header.taxId;
-    
-    if (contactInfo) {
-      cmds.push(this.t(contactInfo + '\n'));
-    }
-
-    if (header.headerNote) {
-      cmds.push(this.t(header.headerNote + '\n'));
-    }
-
+    cmds.push(this.CMD.BOLD_OFF);
     cmds.push(this.line(body.separator === 'dashed' ? '-' : body.separator === 'solid' ? '_' : ' '));
 
     // --- Meta Info ---
     cmds.push(this.CMD.ALIGN_LEFT);
-    
-    if (meta.showDateTime) {
-      const dateStr = new Date().toLocaleDateString('en-GB');
-      const timeStr = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-      cmds.push(this.t(`Date: ${dateStr}  Time: ${timeStr}\n`));
-    }
-    
-    if (meta.showOrderId && orderData.orderId) {
-      cmds.push(this.t(`Order ID: #${orderData.orderId}\n`));
-    }
-    
-    if (meta.showTableNo && orderData.tableName) {
-      cmds.push(this.t(`Table: ${orderData.tableName}\n`));
-    }
-    
-    if (meta.showOrderType && orderData.orderType) {
-      cmds.push(this.t(`Type: ${orderData.orderType}\n`));
-    }
-    
-    if (meta.showCustomerName && orderData.customerName) {
-      cmds.push(this.t(`Customer: ${orderData.customerName}\n`));
-    }
-    
-    if (meta.showCustomerPhone && (orderData.phone || orderData.customerPhone)) {
-      cmds.push(this.t(`Phone: ${orderData.phone || orderData.customerPhone}\n`));
-    }
-
+    const dateStr = new Date().toLocaleDateString('en-GB');
+    const timeStr = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    cmds.push(this.t(`Date: ${dateStr}   Time: ${timeStr}\n`));
+    cmds.push(this.t(`Table: ${orderData.tableName || 'N/A'}\n`));
+    if (orderData.customerName) cmds.push(this.t(`Customer: ${orderData.customerName}\n`));
     cmds.push(this.line(body.separator === 'dashed' ? '-' : body.separator === 'solid' ? '_' : ' '));
 
     // --- Body (Items) ---
     // Column calculations (simplified for 80mm/48chars or 58mm/32chars)
+    // QTY(4) ITEM(REST) PRICE(8) TOTAL(8)
     const qtyW = body.showQty ? 4 : 0;
     const priceW = body.showPrice ? 8 : 0;
     const totalW = body.showTotal ? 9 : 0;
@@ -167,7 +92,7 @@ export class EscPosGenerator {
     cmds.push(this.line('-'));
 
     // Rows
-    (orderData.items || []).forEach(item => {
+    orderData.items.forEach(item => {
       let row = "";
       if (body.showQty) row += item.qty.toString().padEnd(qtyW);
       
@@ -195,23 +120,11 @@ export class EscPosGenerator {
     cmds.push(this.t(`GRAND TOTAL: Rs. ${orderData.grandTotal?.toFixed(2)}\n`));
     cmds.push(this.CMD.BOLD_OFF);
 
-    // --- Footer & WiFi ---
+    // --- Footer ---
     cmds.push(this.CMD.ALIGN_CENTER);
     cmds.push(this.t('\n'));
-    
-    if (footer.showWiFi && footer.wifiName) {
-      cmds.push(this.CMD.BOLD_ON);
-      cmds.push(this.t("GUEST WiFi\n"));
-      cmds.push(this.CMD.BOLD_OFF);
-      cmds.push(this.t(`SSID: ${footer.wifiName}  Pass: ${footer.wifiPass}\n\n`));
-    }
-
     if (footer.bottomText) {
       cmds.push(this.t(footer.bottomText + '\n'));
-    }
-    
-    if (footer.footerNote) {
-      cmds.push(this.t(footer.footerNote + '\n'));
     }
 
     // --- Cut ---
@@ -221,24 +134,23 @@ export class EscPosGenerator {
     return this.combine(cmds);
   }
 
-  generateKOT(items = [], stationName = null, meta = {}) {
+  generateKOT(orderData, stationName = null) {
     let cmds = [this.CMD.INIT, this.CMD.ALIGN_CENTER, this.CMD.BOLD_ON];
     cmds.push(this.t(`KOT: ${stationName || 'Main Kitchen'}\n`));
     cmds.push(this.CMD.BOLD_OFF);
     cmds.push(this.line('='));
     
     cmds.push(this.CMD.ALIGN_LEFT);
-    cmds.push(this.t(`Table: ${meta.tableName || 'N/A'}\n`));
-    if (meta.orderId) cmds.push(this.t(`Order: #${meta.orderId}\n`));
+    cmds.push(this.t(`Table: ${orderData.tableName}\n`));
     cmds.push(this.t(`Time: ${new Date().toLocaleTimeString()}\n`));
     cmds.push(this.line('-'));
     
     cmds.push(this.t("QTY  ITEM\n"));
     cmds.push(this.line('-'));
     
-    (items || []).forEach(item => {
+    orderData.items.forEach(item => {
       cmds.push(this.CMD.BOLD_ON);
-      cmds.push(this.t(`${(item.qty || 1).toString().padEnd(5)}${item.name || 'Unknown Item'}\n`));
+      cmds.push(this.t(`${item.qty.toString().padEnd(5)}${item.name}\n`));
       cmds.push(this.CMD.BOLD_OFF);
       if (item.note) cmds.push(this.t(`  * NOTE: ${item.note}\n`));
     });
