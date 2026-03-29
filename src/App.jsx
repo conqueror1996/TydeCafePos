@@ -1731,6 +1731,7 @@ const BillPreview = ({ settings, mode = 'bill' }) => {
                 <span>Date: 28/03/2026</span>
             </div>
             <div>Time: 18:45</div>
+            <div style={{ fontWeight: 'bold' }}>Customer: Arjun Mehta</div>
             {kot.showOrderType && <div>Type: Dine-In</div>}
         </div>
         <div style={{ borderBottom: '1px solid #000', margin: '10px 0' }}></div>
@@ -2648,11 +2649,11 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
           }
         });
         Object.entries(stationsMap).forEach(([stName, items]) => {
-          groupsToPrint.push({ title: stName, items, tableName: orderData.tableName });
+          groupsToPrint.push({ title: stName, items, tableName: orderData.tableName, customerName: orderData.customerName });
         });
-        if (mainItems.length > 0) groupsToPrint.push({ title: 'KOT', items: mainItems, tableName: orderData.tableName });
+        if (mainItems.length > 0) groupsToPrint.push({ title: 'KOT', items: mainItems, tableName: orderData.tableName, customerName: orderData.customerName });
       } else {
-        groupsToPrint = [{ title: 'KOT', items: orderData.items, tableName: orderData.tableName }];
+        groupsToPrint = [{ title: 'KOT', items: orderData.items, tableName: orderData.tableName, customerName: orderData.customerName }];
       }
 
       for (const group of groupsToPrint) {

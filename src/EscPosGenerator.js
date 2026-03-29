@@ -196,7 +196,10 @@ export class EscPosGenerator {
 
     cmds.push(this.CMD.ALIGN_CENTER);
     cmds.push(this.CMD.BOLD_ON);
+    // Bigger Font for title if it's 80mm
+    if (charLimit === 48) cmds.push(new Uint8Array([0x1B, 0x21, 0x10])); // Double Height
     cmds.push(this.t(`${stationName || kot.title || 'KOT'}\n`));
+    cmds.push(new Uint8Array([0x1B, 0x21, 0x01])); // Reset
     cmds.push(this.CMD.BOLD_OFF);
     cmds.push(this.line('='));
     
@@ -211,6 +214,14 @@ export class EscPosGenerator {
 
     cmds.push(this.t(twoCol(`Table: ${orderData.tableName || 'N/A'}`, `Date: ${dateStr}`)));
     cmds.push(this.t(`Time: ${timeStr}\n`));
+    
+    // Priority: Display Customer Name on KOT
+    if (orderData.customerName) {
+        cmds.push(this.CMD.BOLD_ON);
+        cmds.push(this.t(`Customer: ${orderData.customerName}\n`));
+        cmds.push(this.CMD.BOLD_OFF);
+    }
+
     if (kot.showOrderType && orderData.orderType) {
         cmds.push(this.t(`Type: ${orderData.orderType}\n`));
     }
@@ -220,10 +231,15 @@ export class EscPosGenerator {
     cmds.push(this.line('-'));
     
     orderData.items.forEach(item => {
-      cmds.push(this.CMD.BOLD_ON);
+      cmds.push(this.CMD.BOLD_ON); // Set entire line bold
+      // Use Double Height for KOT items on 80mm if needed, but Bold is minimum
       cmds.push(this.t(`${item.qty.toString().padEnd(5)}${item.name}\n`));
       cmds.push(this.CMD.BOLD_OFF);
-      if (item.note) cmds.push(this.t(`  * NOTE: ${item.note}\n`));
+      if (item.note) {
+          cmds.push(this.CMD.BOLD_ON);
+          cmds.push(this.t(`  * NOTE: ${item.note}\n`));
+          cmds.push(this.CMD.BOLD_OFF);
+      }
     });
     
     cmds.push(this.line('='));
