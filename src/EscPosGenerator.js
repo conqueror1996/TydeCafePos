@@ -52,79 +52,110 @@ export class EscPosGenerator {
     const { header, body, footer, advanced } = this.settings;
     let cmds = [this.CMD.INIT];
 
+    const paperWidth = this.profile.paperWidth || '80mm';
+    const charLimit = this.charLimit;
+
     // --- Header ---
-    cmds.push(header.logoAlign === 'center' ? this.CMD.ALIGN_CENTER : header.logoAlign === 'right' ? this.CMD.ALIGN_RIGHT : this.CMD.ALIGN_LEFT);
-    if (header.fontWeight === 'bold' || header.fontWeight === '900') cmds.push(this.CMD.BOLD_ON);
-    
-    // Top Text
-    if (header.topText) {
-      cmds.push(this.t(header.topText + '\n'));
-    }
+    cmds.push(this.CMD.ALIGN_CENTER);
+    cmds.push(this.CMD.BOLD_ON);
+    // Multiplier for larger text if supported, otherwise just bold
+    cmds.push(this.t((header.storeName || 'Tyde Cafe') + '\n'));
     cmds.push(this.CMD.BOLD_OFF);
-    cmds.push(this.line(body.separator === 'dashed' ? '-' : body.separator === 'solid' ? '_' : ' '));
+    if (header.storeAddress) {
+      cmds.push(this.t(header.storeAddress + '\n'));
+    }
+    cmds.push(this.line('-'));
 
     // --- Meta Info ---
     cmds.push(this.CMD.ALIGN_LEFT);
+    cmds.push(this.t(`Name: ${orderData.customerName || ''}\n`));
+    cmds.push(this.line('-'));
+
     const dateStr = new Date().toLocaleDateString('en-GB');
     const timeStr = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    cmds.push(this.t(`Date: ${dateStr}   Time: ${timeStr}\n`));
-    cmds.push(this.t(`Table: ${orderData.tableName || 'N/A'}\n`));
-    if (orderData.customerName) cmds.push(this.t(`Customer: ${orderData.customerName}\n`));
-    cmds.push(this.line(body.separator === 'dashed' ? '-' : body.separator === 'solid' ? '_' : ' '));
+    
+    // Two column meta row helper
+    const twoCol = (left, right) => {
+      const spacing = charLimit - left.length - right.length;
+      return left + " ".repeat(Math.max(1, spacing)) + right + "\n";
+    };
 
-    // --- Body (Items) ---
-    // Column calculations (simplified for 80mm/48chars or 58mm/32chars)
-    // QTY(4) ITEM(REST) PRICE(8) TOTAL(8)
-    const qtyW = body.showQty ? 4 : 0;
-    const priceW = body.showPrice ? 8 : 0;
-    const totalW = body.showTotal ? 9 : 0;
-    const itemW = this.charLimit - qtyW - priceW - totalW;
+    cmds.push(this.t(twoCol(`Date: ${dateStr}`, `${orderData.orderType || 'Dine In'}: ${orderData.tableName || 'N/A'}`)));
+    cmds.push(this.t(`${timeStr}\n`));
+    cmds.push(this.t(twoCol(`Cashier: ${orderData.cashierName || 'biller'}`, `Bill No.: ${orderData.billNo || '0000'}`)));
+    cmds.push(this.line('-'));
 
-    // Header
-    let rowHeader = "";
-    if (body.showQty) rowHeader += "QTY ".padEnd(qtyW);
-    rowHeader += "ITEM".padEnd(itemW);
-    if (body.showPrice) rowHeader += "PRICE ".padStart(priceW);
-    if (body.showTotal) rowHeader += "TOTAL".padStart(totalW);
+    // --- Items Table ---
+    // Column widths: Item(22), Qty(6), Price(10), Amount(10) total = 48
+    const itemW = charLimit === 32 ? 14 : 22;
+    const qtyW = charLimit === 32 ? 4 : 6;
+    const priceW = charLimit === 32 ? 7 : 10;
+    const amountW = charLimit === 32 ? 7 : 10;
+
+    let tableHeader = "Item".padEnd(itemW) + "Qty.".padStart(qtyW) + "Price".padStart(priceW) + "Amount".padStart(amountW);
+    cmds.push(this.t(tableHeader + '\n'));
+    cmds.push(this.line('-'));
+
+    orderData.items.forEach(item => {
+      // Handle item name wrapping
+      let name = item.name;
+      let firstLine = name.substring(0, itemW).padEnd(itemW);
+      let qty = item.qty.toString().padStart(qtyW);
+      let price = item.price.toFixed(2).padStart(priceW);
+      let amount = (item.qty * item.price).toFixed(2).padStart(amountW);
+
+      cmds.push(this.t(firstLine + qty + price + amount + '\n'));
+      
+      // If name is longer, print the rest below
+      if (name.length > itemW) {
+        cmds.push(this.t(name.substring(itemW) + '\n'));
+      }
+    });
+    cmds.push(this.line('-'));
+
+    // --- Summary ---
+    const totalQty = orderData.items.reduce((acc, i) => acc + i.qty, 0);
+    
+    // Total Qty (leftish), Sub Total (label), Amount (right)
+    const summaryCol = (left, mid, right) => {
+      // left is "Total Qty: X"
+      // mid is "Sub Total"
+      // right is amount
+      // We want mid and right to align
+      const rightPart = mid.padEnd(15) + right.padStart(10);
+      const leftPart = left.padEnd(charLimit - rightPart.length);
+      return leftPart + rightPart + "\n";
+    };
+
+    cmds.push(this.t(summaryCol(`Total Qty: ${totalQty}`, "Sub Total", orderData.subtotal?.toFixed(2))));
+    
+    if (orderData.serviceCharge > 0) {
+      cmds.push(this.t(summaryCol("", "Service Charge", orderData.serviceCharge?.toFixed(2))));
+      cmds.push(this.t(" ".repeat(charLimit - 25) + "(Optional)\n"));
+    }
+
+    if (orderData.roundOff !== 0) {
+      const roStr = (orderData.roundOff > 0 ? "+" : "") + orderData.roundOff.toFixed(2);
+      cmds.push(this.t(summaryCol("", "Round off", roStr)));
+    }
+
+    cmds.push(this.line('-'));
+    
+    // Grand Total Row
     cmds.push(this.CMD.BOLD_ON);
-    cmds.push(this.t(rowHeader + '\n'));
+    const gtLabel = "Grand Total";
+    const gtAmount = `₹${orderData.grandTotal?.toFixed(2)}`;
+    const gtSpacing = charLimit - gtLabel.length - gtAmount.length;
+    cmds.push(this.t(gtLabel + " ".repeat(Math.max(1, gtSpacing)) + gtAmount + '\n'));
     cmds.push(this.CMD.BOLD_OFF);
     cmds.push(this.line('-'));
 
-    // Rows
-    orderData.items.forEach(item => {
-      let row = "";
-      if (body.showQty) row += item.qty.toString().padEnd(qtyW);
-      
-      const itemName = item.name.substring(0, itemW - 1).padEnd(itemW);
-      row += itemName;
-      
-      if (body.showPrice) row += item.price.toFixed(0).padStart(priceW);
-      if (body.showTotal) row += (item.qty * item.price).toFixed(0).padStart(totalW);
-      
-      if (body.itemNameWeight === 'bold') cmds.push(this.CMD.BOLD_ON);
-      cmds.push(this.t(row + '\n'));
-      cmds.push(this.CMD.BOLD_OFF);
-    });
-
-    cmds.push(this.line(body.separator === 'dashed' ? '-' : body.separator === 'solid' ? '_' : ' '));
-
-    // --- Summary ---
-    cmds.push(this.CMD.ALIGN_RIGHT);
-    cmds.push(this.t(`Subtotal: ${orderData.subtotal?.toFixed(2)}\n`));
-    if (advanced.showTaxBreakdown) {
-      const tax = (orderData.subtotal * 0.05).toFixed(2);
-      cmds.push(this.t(`GST (5%): ${tax}\n`));
-    }
-    cmds.push(this.CMD.BOLD_ON);
-    cmds.push(this.t(`GRAND TOTAL: Rs. ${orderData.grandTotal?.toFixed(2)}\n`));
-    cmds.push(this.CMD.BOLD_OFF);
-
     // --- Footer ---
     cmds.push(this.CMD.ALIGN_CENTER);
-    cmds.push(this.t('\n'));
     if (footer.bottomText) {
       cmds.push(this.t(footer.bottomText + '\n'));
+    } else {
+      cmds.push(this.t("Thank You for Visiting!\n"));
     }
 
     // --- Cut ---
@@ -135,14 +166,26 @@ export class EscPosGenerator {
   }
 
   generateKOT(orderData, stationName = null) {
-    let cmds = [this.CMD.INIT, this.CMD.ALIGN_CENTER, this.CMD.BOLD_ON];
-    cmds.push(this.t(`KOT: ${stationName || 'Main Kitchen'}\n`));
+    let cmds = [this.CMD.INIT];
+    const charLimit = this.charLimit;
+
+    cmds.push(this.CMD.ALIGN_CENTER);
+    cmds.push(this.CMD.BOLD_ON);
+    cmds.push(this.t(`${stationName || 'KOT'}\n`));
     cmds.push(this.CMD.BOLD_OFF);
     cmds.push(this.line('='));
     
     cmds.push(this.CMD.ALIGN_LEFT);
-    cmds.push(this.t(`Table: ${orderData.tableName}\n`));
-    cmds.push(this.t(`Time: ${new Date().toLocaleTimeString()}\n`));
+    const dateStr = new Date().toLocaleDateString('en-GB');
+    const timeStr = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    
+    const twoCol = (left, right) => {
+      const spacing = charLimit - left.length - right.length;
+      return left + " ".repeat(Math.max(1, spacing)) + right + "\n";
+    };
+
+    cmds.push(this.t(twoCol(`Table: ${orderData.tableName}`, `Date: ${dateStr}`)));
+    cmds.push(this.t(`Time: ${timeStr}\n`));
     cmds.push(this.line('-'));
     
     cmds.push(this.t("QTY  ITEM\n"));

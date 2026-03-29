@@ -2558,11 +2558,11 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
           }
         });
         Object.entries(stationsMap).forEach(([stName, items]) => {
-          groupsToPrint.push({ title: stName, items });
+          groupsToPrint.push({ title: stName, items, tableName: orderData.tableName });
         });
-        if (mainItems.length > 0) groupsToPrint.push({ title: 'Main Kitchen', items: mainItems });
+        if (mainItems.length > 0) groupsToPrint.push({ title: 'KOT', items: mainItems, tableName: orderData.tableName });
       } else {
-        groupsToPrint = [{ title: 'KOT', items: orderData.items }];
+        groupsToPrint = [{ title: 'KOT', items: orderData.items, tableName: orderData.tableName }];
       }
 
       for (const group of groupsToPrint) {
@@ -2571,7 +2571,11 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
       }
     } else {
       // BILL
-      const bytes = generator.generateBill(orderData);
+      const bytes = generator.generateBill({ 
+        ...orderData, 
+        billNo: seqNumber.toString().padStart(4, '0'),
+        cashierName: 'biller' // Default as per reference image
+      });
       await writer.write(bytes);
     }
 
