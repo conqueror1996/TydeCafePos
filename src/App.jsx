@@ -1508,6 +1508,21 @@ const PrinterSettingsView = ({ settings, onSaveSettings, categories }) => {
           </div>
 
           <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '12px' }}>Isolated KOT Categories</label>
+            <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '16px' }}>Select categories that should ALWAYS print on their own separate KOT slip, regardless of station settings.</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+              {categories.map(cat => {
+                const isIsolated = (localSettings.separatePrintCategories || []).includes(cat);
+                return (
+                  <label key={cat} onClick={() => toggleCategory(cat)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', border: `1px solid ${isIsolated ? '#ef4444' : '#d1d5db'}`, padding: '6px 12px', borderRadius: '20px', background: isIsolated ? '#fee2e2' : 'white', color: isIsolated ? '#b91c1c' : '#4b5563', cursor: 'pointer', transition: 'all 0.2s', fontWeight: isIsolated ? 'bold' : 'normal' }}>
+                    {cat}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>Custom KOT Stations</label>
               <button onClick={() => {
@@ -1955,13 +1970,33 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
 
     if (type === 'KOT') {
       let groupsToPrint = [];
+      const separateCats = settings.separatePrintCategories || [];
 
+      // Step 1: Split items that MUST be separate
+      const remainingItemsForStations = [];
+      const separateGroups = {}; // categoryName -> items[]
+
+      orderData.items.forEach(item => {
+        if (separateCats.includes(item.cat)) {
+          if (!separateGroups[item.cat]) separateGroups[item.cat] = [];
+          separateGroups[item.cat].push(item);
+        } else {
+          remainingItemsForStations.push(item);
+        }
+      });
+
+      // Add separate groups to results
+      Object.entries(separateGroups).forEach(([catName, items]) => {
+        groupsToPrint.push({ title: `Category: ${catName}`, items });
+      });
+
+      // Step 2: Handle remaining items with printer stations logic
       if (settings.printerStations && settings.printerStations.length > 0) {
         // Station logic
         const mainItems = [];
         const stationsMap = {}; // stationName -> items
 
-        orderData.items.forEach(item => {
+        remainingItemsForStations.forEach(item => {
           let assignedStation = null;
           for (const st of settings.printerStations) {
             if (st.categories.includes(item.cat)) {
@@ -1988,8 +2023,10 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
           groupsToPrint.push({ title: 'Main Kitchen', items: mainItems });
         }
       } else {
-        // Print all items together on 1 KOT
-        groupsToPrint = [{ title: 'All Items', items: orderData.items }];
+        // Print remaining items together (if no stations defined)
+        if (remainingItemsForStations.length > 0) {
+          groupsToPrint.push({ title: 'All Items', items: remainingItemsForStations });
+        }
       }
 
       // Loop through and print each required KOT slip and CUT PAPER between them
@@ -2279,13 +2316,33 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
 
     } else { // KOT
       let groupsToPrint = [];
+      const separateCats = settings.separatePrintCategories || [];
 
+      // Step 1: Split items that MUST be separate
+      const remainingItemsForStations = [];
+      const separateGroups = {}; // categoryName -> items[]
+
+      orderData.items.forEach(item => {
+        if (separateCats.includes(item.cat)) {
+          if (!separateGroups[item.cat]) separateGroups[item.cat] = [];
+          separateGroups[item.cat].push(item);
+        } else {
+          remainingItemsForStations.push(item);
+        }
+      });
+
+      // Add separate groups to results
+      Object.entries(separateGroups).forEach(([catName, items]) => {
+        groupsToPrint.push({ title: `Category: ${catName}`, items });
+      });
+
+      // Step 2: Handle remaining items with printer stations logic
       if (settings.printerStations && settings.printerStations.length > 0) {
         // Station logic
         const mainItems = [];
         const stationsMap = {}; // stationName -> items
 
-        orderData.items.forEach(item => {
+        remainingItemsForStations.forEach(item => {
           let assignedStation = null;
           for (const st of settings.printerStations) {
             if (st.categories.includes(item.cat)) {
@@ -2311,7 +2368,9 @@ const printPosToSerial = async (orderData, type = 'BILL') => {
           groupsToPrint.push({ title: 'Main Kitchen', items: mainItems });
         }
       } else {
-        groupsToPrint = [{ title: 'All Items', items: orderData.items }];
+        if (remainingItemsForStations.length > 0) {
+          groupsToPrint.push({ title: 'All Items', items: remainingItemsForStations });
+        }
       }
 
       for (let i = 0; i < groupsToPrint.length; i++) {
