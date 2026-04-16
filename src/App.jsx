@@ -263,6 +263,7 @@ const AppSidebar = ({ activeView, onViewChange }) => {
         { id: 'productsetup', label: 'Inventory', icon: Package },
         { id: 'reports', label: 'Reports', icon: BarChart3 },
         { id: 'crm', label: 'CRM', icon: User },
+        { id: 'printersettings', label: 'Printer Settings', icon: Printer },
         { id: 'globalsettings', label: 'Settings', icon: LayoutGrid },
       ]
     }
@@ -1508,8 +1509,8 @@ const PrinterSettingsView = ({ settings, onSaveSettings, categories }) => {
           </div>
 
           <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '12px' }}>Isolated KOT Categories</label>
-            <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '16px' }}>Select categories that should ALWAYS print on their own separate KOT slip, regardless of station settings.</p>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#374151', marginBottom: '12px' }}>Category-wise Separate KOT Printing</label>
+            <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '16px' }}>Select categories that should print on a separate slip. For example, if you select <b>Quick Snacks</b>, all items in that category will print on their own KOT slip.</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
               {categories.map(cat => {
                 const isIsolated = (localSettings.separatePrintCategories || []).includes(cat);
@@ -4046,7 +4047,7 @@ export default function App() {
             />
           )}
           {view === 'printersettings' && (
-            <PrinterSettingsView settings={settings} onSaveSettings={setSettings} categories={categories} />
+            <PrinterSettingsView settings={settings} onSaveSettings={setSettings} categories={Array.from(new Set([...categories, ...productCategories]))} />
           )}
           {view === 'menusetup' && (
             <MenuSetupView
